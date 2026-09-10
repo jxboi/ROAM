@@ -5,10 +5,12 @@ import { rideById, type Costs } from '../data/rides';
 import { useStore } from '../lib/store-context';
 import { addDays, CHECKLIST, downloadFile, formatDate, money, planCalendar, planMarkdown, tripBudget, type PlanDay } from '../lib/planning';
 import { uid } from '../lib/id';
+import { useDocumentMeta } from '../lib/meta';
 import { Arrow, EmptyState, Modal } from '../components/ui';
 export function Planner(){
  const {id}=useParams(),store=useStore(),navigate=useNavigate();const trip=store.trips.find(t=>t.id===id);const ride=trip?rideById(trip.rideId):undefined;
  const [tab,setTab]=useState('Itinerary'),[exportOpen,setExportOpen]=useState(false),[deleteOpen,setDeleteOpen]=useState(false),[renameOpen,setRenameOpen]=useState(false),[nameDraft,setNameDraft]=useState('');
+ useDocumentMeta({title:trip?trip.name:'Trip not found',description:'Plan your motorcycle trip: itinerary, budget and preparation checklist.',noIndex:true});
  if(!trip||!ride)return <div className="container"><EmptyState title="Let’s find your next adventure" description="This trip isn’t saved in this browser. Start with a ride you love, or return to your other plans." to="/trips" action="Go to my trips"/></div>;
  const update=(patch:Parameters<typeof store.updateTrip>[1])=>store.updateTrip(trip.id,patch);
  const budget=tripBudget(trip),distance=trip.days.reduce((total,day)=>total+day.km,0),outOfSeason=trip.startDate&&!ride.months.includes(Number(trip.startDate.slice(5,7)));

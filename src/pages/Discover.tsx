@@ -4,6 +4,8 @@ import { MapPin, CalendarDays, SlidersHorizontal, ChevronDown, X, Search, GitCom
 import { rides, MONTHS, STYLES, REGIONS } from '../data/rides';
 import { filterRides, defaultFilters, type Filters } from '../lib/planning';
 import { useStore } from '../lib/store-context';
+import { useDocumentMeta, useJsonLd } from '../lib/meta';
+import { SITE_DESCRIPTION, absoluteUrl } from '../lib/site';
 import { RideCard } from '../components/RideCard';
 import { Modal, Arrow, EmptyState } from '../components/ui';
 const styleIcons=[Mountain,Waves,Route,Coffee];
@@ -14,6 +16,10 @@ export function Discover(){
  const [query,setQuery]=useState(filters.query),[month,setMonth]=useState(filters.month),[style,setStyle]=useState(filters.style);
  const [filterOpen,setFilterOpen]=useState(false),[draft,setDraft]=useState(filters),[compareMode,setCompareMode]=useState(params.get('compare')==='true'||compare.length>0);
  const resultsRef=useRef<HTMLElement>(null);
+ // Filtered views are the same eight rides in another order, so they all
+ // canonicalise to the discovery page rather than competing with it.
+ useDocumentMeta({description:SITE_DESCRIPTION,path:'/'});
+ useJsonLd({'@context':'https://schema.org','@type':'ItemList','name':'Motorcycle routes on ROAM','itemListElement':rides.map((ride,index)=>({'@type':'ListItem',position:index+1,url:absoluteUrl(`/ride/${ride.id}`),name:ride.name}))});
  const active=Object.entries(filters).filter(([key,value])=>key!=='sort'&&!!value);
  const isBrowsing=params.get('all')==='true'||active.length>0;
  const results=filterRides(rides,filters),visible=isBrowsing?results:results.slice(0,3);

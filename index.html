@@ -3,13 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#183b32" />
-    <meta name="description" content="Find your next great motorcycle ride. Discover extraordinary routes around the world, compare destinations, and make the trip your own with ROAM." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>ROAM — Find your next great ride</title>
+    <meta name="description" content="Find your next great motorcycle ride. Discover extraordinary routes around the world, compare destinations, and make the trip your own with ROAM." />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Defaults for crawlers and link unfurlers that never run the app; the
+         router replaces these per route once React mounts. -->
+    <meta property="og:site_name" content="ROAM" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ROAM — Find your next great ride" />
+    <meta property="og:description" content="Discover extraordinary motorcycle routes around the world, compare destinations, and make the trip your own." />
+    <meta property="og:image" content="/social-card.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A motorcyclist on a mountain road at golden hour" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ROAM — Find your next great ride" />
+    <meta name="twitter:description" content="Discover extraordinary motorcycle routes around the world, compare destinations, and make the trip your own." />
+    <meta name="twitter:image" content="/social-card.jpg" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- The hero is the largest contentful paint on the landing page. -->
+    <link rel="preload" as="image" href="/images/hero-panorama.webp" media="(min-width: 641px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/hero.webp" media="(max-width: 640px)" fetchpriority="high" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="max-width:38rem;margin:4rem auto;padding:0 1.5rem;font-family:system-ui,sans-serif;line-height:1.6;color:#153a32">
+        <h1 style="font-size:1.6rem">ROAM needs JavaScript</h1>
+        <p>ROAM plans motorcycle trips in your browser, with no account and no server storing your plans. Please enable JavaScript to explore the routes.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
