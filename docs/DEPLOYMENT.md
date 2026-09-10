@@ -71,8 +71,13 @@ npm run serve        # http://127.0.0.1:4173
 `npm run serve` serves `dist/` with the same header rules and single-page
 fallback as the hosts, by reading `dist/_headers`. It is what the end-to-end
 suites run against, in Chromium, Firefox and WebKit, so a broken policy or a 404
-on a deep link fails in CI rather than in production. `npm run preview` is Vite's own preview server and
-does not apply those rules.
+on a deep link fails in CI rather than in production. `npm run preview` is Vite's
+own preview server and does not apply those rules.
+
+It serves plain HTTP, so it drops `upgrade-insecure-requests` from the policy it
+sends. That directive belongs on a host terminating TLS, and engines differ on
+whether they exempt localhost from it — WebKit does not, and would rewrite every
+script request to a port that is not listening.
 
 ## After deploying
 
@@ -103,8 +108,8 @@ about which files exist.
 of shell files and their hashes substituted for its `__ROAM_SHELL__` placeholder
 by a plugin in `vite.config.ts`. The caching policy is written out in
 `src/sw.ts` rather than generated, so there is no PWA toolchain in the
-dependency tree. It precaches the shell (about 570 KB: HTML, JS, CSS, fonts and
-icons) and caches destination photography as it is actually viewed, so a first
+dependency tree. It precaches the shell — HTML, JS, CSS, fonts and
+icons, around 270 KB over the wire, budgeted by `npm run check:size` — and caches destination photography as it is actually viewed, so a first
 visit does not download every image.
 
 Two things must hold for updates to land:

@@ -73,3 +73,33 @@ test.describe('backup and restore', () => {
     await expect(page.locator('.trip-list-item')).toHaveCount(2);
   });
 });
+
+test.describe('removing stored rides and trips', () => {
+  test('clears the device only after confirming, and survives a reload', async ({ page }) => {
+    await planRide(page, 'dolomites');
+    await page.goto('/?all=true');
+    await page.locator('article.ride-card').first().getByRole('button', { name: /^Save / }).click();
+
+    await openProfile(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Remove my rides and trips/ }).click();
+    await expect(dialog.getByRole('group', { name: 'Confirm removing your rides and trips' }))
+      .toContainText('Remove 1 trip and 1 saved ride');
+
+    await dialog.getByRole('button', { name: 'Keep them' }).click();
+    await dialog.getByRole('button', { name: /Let’s explore/ }).click();
+    await page.goto('/trips');
+    await expect(page.locator('.trip-list-item')).toHaveCount(1);
+
+    await openProfile(page);
+    await dialog.getByRole('button', { name: /Remove my rides and trips/ }).click();
+    await dialog.getByRole('button', { name: 'Yes, remove them' }).click();
+    await expect(toast(page)).toContainText('Your rides and trips have been removed');
+    await dialog.getByRole('button', { name: /Let’s explore/ }).click();
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: /Every adventure starts somewhere/ })).toBeVisible();
+    await page.goto('/saved');
+    await expect(page.getByRole('heading', { name: /Some roads stay with you/ })).toBeVisible();
+  });
+});

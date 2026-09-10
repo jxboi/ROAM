@@ -57,7 +57,13 @@ function offlineShellFiles() {
     console.error('sw.js has no precache manifest; the offline shell cannot be measured.');
     process.exit(1);
   }
-  return JSON.parse(manifest[0]).map(entry => entry.url.replace(/^\//, ''));
+  const files = JSON.parse(manifest[0]).map(entry => entry.url.replace(/^\//, ''));
+  const missing = files.filter(file => !existsSync(path.join(dist, file)));
+  if (missing.length) {
+    console.error(`The service worker precaches files the build did not produce, so it could never install:\n  ${missing.join('\n  ')}`);
+    process.exit(1);
+  }
+  return files;
 }
 
 const shell = offlineShellFiles();

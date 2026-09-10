@@ -142,3 +142,14 @@ test.describe('planning a trip', () => {
     await expect(page).toHaveURL(/\/trips$/);
   });
 });
+
+test('lists trips with the most recently edited first', async ({ page }) => {
+  await planRide(page, 'dolomites');
+  await planRide(page, 'lofoten');
+  // Touch the older trip so it should move back to the top.
+  await page.goto('/trips');
+  await page.getByRole('link', { name: /Dolomites/ }).click();
+  await page.getByLabel('Trip start date').fill('2027-08-01');
+  await page.goto('/trips');
+  await expect(page.locator('.trip-list-item').first()).toContainText('Dolomites');
+});

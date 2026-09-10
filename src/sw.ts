@@ -29,7 +29,12 @@ const PASS_THROUGH = /^\/(robots\.txt|sitemap\.xml)$/;
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then(cache => cache.addAll([...SHELL_URLS])),
+    caches.open(SHELL_CACHE).then(cache => cache.addAll(
+      // Bypass the HTTP cache while installing. index.html is served with
+      // must-revalidate, and precaching a copy of the previous build's document
+      // would point every navigation at assets this build no longer has.
+      [...SHELL_URLS].map(url => new Request(url, { cache: 'reload' })),
+    )),
   );
 });
 

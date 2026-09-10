@@ -13,7 +13,8 @@ ROAM is a static, client-only application. It has no backend, no accounts, no
 analytics and no third-party requests at runtime. Saved rides and trip plans are
 held in the visitor's own browser under the `localStorage` key
 `roam-planner-v1`, and never leave the device except when the visitor exports a
-file themselves.
+file themselves. The profile panel offers a backup of that data and a way to
+remove all of it from the browser.
 
 ## Hardening in place
 

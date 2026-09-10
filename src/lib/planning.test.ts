@@ -76,6 +76,14 @@ describe('calendar dates and exports',()=>{
  });
 });
 describe('editorial data integrity',()=>{
+ it('keeps the route identifiers it has already handed out',()=>{
+  // A stored trip points at its route by id, and a saved ride is just an id.
+  // Renaming or removing one silently deletes those plans on next load, so the
+  // set is pinned here and a change to it has to be a deliberate one.
+  expect(rides.map(r=>r.id)).toEqual([
+   'dolomites','ha-giang','atlas','lofoten','kyushu','south-island','blue-ridge','patagonia',
+  ]);
+ });
  it('has internally consistent day counts, distances and valid season values',()=>{
   expect(new Set(rides.map(r=>r.id)).size).toBe(rides.length);
   expect(new Set(rides.map(r=>r.region)).size).toBe(6);

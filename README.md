@@ -39,8 +39,9 @@ Requires Node 22 (see `.nvmrc`).
   days, and a 10% contingency.
 - A preparation checklist, Markdown itinerary export, calendar (ICS) export, and
   a copyable plan.
-- A JSON backup of everything saved on the device, and a restore that adds those
-  plans back alongside anything already there rather than replacing them.
+- A JSON backup of everything saved on the device, a restore that adds those
+  plans back alongside anything already there rather than replacing them, and a
+  way to remove all of it from the browser in one step.
 - Installable, and readable with no signal: the app shell is precached and
   destination photography is cached as it is looked at, so a plan stays open on
   the road. A new build waits behind a prompt rather than swapping itself in.
@@ -55,10 +56,10 @@ Requires Node 22 (see `.nvmrc`).
 | `src/lib/planning.ts` | Filtering, budget maths, dates and the Markdown/ICS exports. |
 | `src/lib/persistence.ts` | Reads stored state back, repairing anything malformed. |
 | `src/lib/backup.ts` | The backup file format, and merging a restore into what is already here. |
-| `src/sw.ts` | The service worker: what is precached, what is cached as it is used, and how updates land. Built as a second entry by a plugin in `vite.config.ts`. |
-| `src/lib/images.ts` | The responsive image candidate sets, and how wide each surface renders a photo. |
 | `src/lib/store.tsx` | The React store: saved rides, comparisons, trips, and persistence. |
 | `src/lib/meta.ts` | Per-route title, description, Open Graph tags and structured data. |
+| `src/lib/images.ts` | The responsive image candidate sets, and how wide each surface renders a photo. |
+| `src/sw.ts` | The service worker: what is precached, what is cached as it is used, and how updates land. Built as a second entry by a plugin in `vite.config.ts`. |
 | `src/pages`, `src/components` | The routed pages and the shared UI. |
 | `e2e/` | Playwright suites, run against the real build. |
 | `deploy/`, `public/_headers`, `vercel.json` | Host configuration (see below). |
@@ -77,7 +78,7 @@ points at a real route is dropped rather than crashing an export.
 | `npm test` | Unit tests. `test:watch` and `test:coverage` too. |
 | `npm run test:e2e` | Playwright end-to-end and accessibility suites. |
 | `npm run typecheck` / `npm run lint` | Types and lint (lint fails on warnings). |
-| `npm run check:size` | Fail if the gzipped first-load bundle exceeds its budget. |
+| `npm run check:size` | Fail if the gzipped first load, or the offline shell, exceeds its budget. |
 | `npm run assets` | Regenerate share cards, responsive image widths and PWA icons from the source imagery. |
 | `npm run verify` | Everything except the end-to-end suite. |
 

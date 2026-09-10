@@ -58,9 +58,11 @@ describe('deployment configuration', () => {
     expect(read('scripts/serve-dist.mjs')).toContain('upgrade-insecure-requests');
   });
 
-  it('refuses inline and third-party scripts', () => {
+  it('refuses inline and third-party scripts, and inline styles', () => {
     const csp = headersFile.match(/^\s*Content-Security-Policy:\s*(.+)$/m)?.[1] ?? '';
     expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("style-src 'self'");
+    expect(csp).not.toContain("'unsafe-inline'");
     expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).toMatch(/script-src 'self'\s*;/);
     expect(csp).toContain("object-src 'none'");

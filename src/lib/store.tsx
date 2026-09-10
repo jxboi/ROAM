@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } fro
 import { StoreContext, type State } from './store-context';
 import { rideById, type Ride } from '../data/rides';
 import { createTrip, type Trip } from './planning';
-import { KEY, parseState } from './persistence';
+import { EMPTY, KEY, parseState } from './persistence';
 import { mergeState, type RestoreSummary } from './backup';
 import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from './storage';
 
@@ -115,9 +115,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return summary;
   }, []);
 
+  /** Every ride and trip this browser holds, gone. The only copy left is a backup. */
+  const clearEverything = useCallback(() => {
+    setState(EMPTY);
+    notify('Your rides and trips have been removed');
+  }, [notify]);
+
   const value = useMemo(() => ({
-    ...state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, restore, notify, toast, storageError,
-  }), [state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, restore, notify, toast, storageError]);
+    ...state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, restore, clearEverything, notify, toast, storageError,
+  }), [state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, restore, clearEverything, notify, toast, storageError]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

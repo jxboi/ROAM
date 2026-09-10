@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { rides } from '../data/rides';
@@ -150,5 +150,53 @@ describe('backing up and restoring from the profile panel', () => {
     const huge = new File(['x'.repeat(5_000_001)], 'huge.json', { type: 'application/json' });
     await user.upload(fileInput(dialog), huge);
     expect(await screen.findByText('That file is too large to be a ROAM backup.')).toBeInTheDocument();
+  });
+});
+
+describe('removing stored rides and trips', () => {
+  const filled = () => localStorage.setItem(KEY, JSON.stringify({
+    saved: [rides[1].id], compare: [], trips: [createTrip(rides[0])],
+  }));
+
+  it('is not offered when there is nothing stored', async () => {
+    const user = userEvent.setup();
+    renderShell();
+    const dialog = await openProfile(user);
+    expect(within(dialog).queryByRole('button', { name: /Remove my rides and trips/ })).not.toBeInTheDocument();
+  });
+
+  it('asks first, and says exactly what would go', async () => {
+    const user = userEvent.setup();
+    filled();
+    renderShell();
+    const dialog = await openProfile(user);
+    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
+    expect(within(dialog).getByRole('group', { name: 'Confirm removing your rides and trips' }))
+      .toHaveTextContent('Remove 1 trip and 1 saved ride from this browser?');
+  });
+
+  it('leaves everything alone when the answer is no', async () => {
+    const user = userEvent.setup();
+    filled();
+    renderShell();
+    const dialog = await openProfile(user);
+    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Keep them' }));
+    expect(within(dialog).getByRole('button', { name: /Remove my rides and trips/ })).toBeInTheDocument();
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(KEY)!).trips).toHaveLength(1));
+  });
+
+  it('clears the browser when the answer is yes', async () => {
+    const user = userEvent.setup();
+    filled();
+    renderShell();
+    const dialog = await openProfile(user);
+    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Yes, remove them' }));
+    expect(await screen.findByText('Your rides and trips have been removed')).toBeInTheDocument();
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem(KEY)!);
+      expect(stored).toEqual({ saved: [], compare: [], trips: [] });
+    });
   });
 });
