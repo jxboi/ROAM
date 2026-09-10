@@ -77,9 +77,9 @@ points at a real route is dropped rather than crashing an export.
 ## Validation
 
 `npm run verify` runs the typecheck, lint, 75 unit tests with coverage gates,
-the production build, and the bundle budget. `npm run test:e2e` runs 90
-browser tests at desktop and phone sizes against the built app, served with the
-deployed header and rewrite rules: discovery and filtering, saving, comparison,
+the production build, and the bundle budget. `npm run test:e2e` runs the browser
+suites against the built app, served with the deployed header and rewrite rules,
+across Chromium, Firefox and WebKit at desktop and phone sizes: discovery and filtering, saving, comparison,
 the full planning flow including both file exports, deep links, per-route
 metadata, the security headers, and axe accessibility scans at WCAG 2.1 AA on
 every page and dialog.
