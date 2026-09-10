@@ -10,7 +10,7 @@ on:
 # makes an in-flight run irrelevant, except on the default branch, where the
 # result is worth keeping.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:

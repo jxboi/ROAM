@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { rides } from '../data/rides';
 import { createTrip } from './planning';
 import { EMPTY } from './persistence';
-import { BACKUP_FORMAT, backupFilename, createBackup, describeRestore, mergeState, readBackup } from './backup';
+import { BACKUP_FORMAT, backupFilename, createBackup, describeRestore, describeStored, mergeState, readBackup } from './backup';
 import type { State } from './store-context';
 
 const ride = rides[0];
@@ -89,5 +89,15 @@ describe('describing a restore', () => {
     expect(describeRestore({ trips: 1, saved: 0, replaced: 0 })).toBe('Restored 1 trip');
     expect(describeRestore({ trips: 3, saved: 2, replaced: 0 })).toBe('Restored 3 trips and 2 saved rides');
     expect(describeRestore({ trips: 2, saved: 1, replaced: 1 })).toBe('Restored 2 trips, 1 newer trip and 1 saved ride');
+  });
+});
+
+describe('describing what is stored', () => {
+  it('counts only what is there, in words', () => {
+    expect(describeStored({ trips: 0, saved: 0, compare: 0 })).toBe('nothing');
+    expect(describeStored({ trips: 1, saved: 0, compare: 0 })).toBe('1 trip');
+    expect(describeStored({ trips: 0, saved: 0, compare: 2 })).toBe('2 rides set aside to compare');
+    expect(describeStored({ trips: 2, saved: 1, compare: 3 }))
+      .toBe('2 trips, 1 saved ride and 3 rides set aside to compare');
   });
 });

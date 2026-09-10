@@ -15,25 +15,29 @@ export type PageMeta = {
 export const pageTitle = (title?: string) =>
   title ? `${title} · ${SITE_NAME}` : `${SITE_NAME} — ${SITE_TAGLINE}`;
 
-let currentPage = '';
+export type CurrentPage = { title: string; path: string };
+
+const EMPTY_PAGE: CurrentPage = { title: '', path: '' };
+let currentPage: CurrentPage = EMPTY_PAGE;
 const listeners = new Set<() => void>();
 
-function setCurrentPage(title: string) {
-  if (currentPage === title) return;
-  currentPage = title;
+function setCurrentPage(next: CurrentPage) {
+  if (currentPage.title === next.title && currentPage.path === next.path) return;
+  currentPage = next;
   listeners.forEach(listener => listener());
 }
 
 /**
- * The name of the page now showing. The shell turns this into a polite
- * announcement once the visitor has actually navigated — the first page is
- * read out by the browser anyway.
+ * The page now showing, and the route it belongs to. Routes are code-split, so
+ * this only catches up once the destination has mounted; the path lets the
+ * shell tell that apart from the page being left, which is still on screen
+ * behind the loading state.
  */
-export function useRouteAnnouncement(): string {
+export function useRouteAnnouncement(): CurrentPage {
   return useSyncExternalStore(
     listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     () => currentPage,
-    () => '',
+    () => EMPTY_PAGE,
   );
 }
 
@@ -85,7 +89,7 @@ export function useDocumentMeta({ title, description, path, image, type = 'websi
     upsertMeta('name', 'twitter:description', resolvedDescription);
     upsertMeta('name', 'twitter:image', card);
     upsertLink('canonical', url);
-    setCurrentPage(title ?? SITE_NAME);
+    setCurrentPage({ title: title ?? SITE_NAME, path: resolvedPath });
   }, [resolvedTitle, resolvedDescription, resolvedPath, resolvedImage, type, noIndex, title]);
 }
 

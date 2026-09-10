@@ -44,6 +44,33 @@ describe('lazily loaded routes', () => {
     expect(sessionStorage.getItem('roam-chunk-reload')).toBe('1');
   });
 
+  it('does not reload for an error that is not a missing chunk', async () => {
+    const Route = lazyRoute(async () => { throw new TypeError('cannot read properties of null'); }, 'Page');
+    const onError = vi.fn();
+    render(
+      <Suspense fallback={<p>Loading</p>}>
+        <ErrorSink onError={onError}><Route /></ErrorSink>
+      </Suspense>,
+    );
+    await waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(reload).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('roam-chunk-reload')).toBeNull();
+  });
+
+  it('does not reload while offline, where the reload would fail too', async () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    const Route = lazyRoute(async () => { throw new Error('Failed to fetch dynamically imported module'); }, 'Page');
+    const onError = vi.fn();
+    render(
+      <Suspense fallback={<p>Loading</p>}>
+        <ErrorSink onError={onError}><Route /></ErrorSink>
+      </Suspense>,
+    );
+    await waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(reload).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+  });
+
   it('surfaces the error rather than looping when a reload did not help', async () => {
     sessionStorage.setItem('roam-chunk-reload', '1');
     const Route = lazyRoute(async () => { throw new Error('still missing'); }, 'Page');

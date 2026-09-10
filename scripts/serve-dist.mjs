@@ -61,9 +61,10 @@ function headersFor(pathname) {
   const merged = new Map();
   for (const rule of rules) {
     const pattern = rule.pattern;
+    // '/*' and '/assets/*' are both prefix rules; everything else is exact.
     const matches = pattern.endsWith('/*')
       ? pathname.startsWith(pattern.slice(0, -1))
-      : pattern === '/*' || pattern === pathname;
+      : pattern === pathname;
     if (matches) for (const [name, value] of rule.headers) merged.set(name, value);
   }
   // This server speaks plain HTTP. upgrade-insecure-requests belongs on the

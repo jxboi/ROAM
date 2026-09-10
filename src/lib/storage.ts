@@ -23,12 +23,14 @@ export function readStorage(key: string): string | null {
 }
 
 export function writeStorage(key: string, value: string): boolean {
-  const local = store();
-  if (!local) return false;
   try {
+    const local = globalThis.localStorage;
+    if (!local) return false;
     local.setItem(key, value);
     return true;
   } catch {
+    // A refused write reports itself; no probe needed on a path that runs
+    // every few hundred milliseconds while someone is typing.
     return false;
   }
 }

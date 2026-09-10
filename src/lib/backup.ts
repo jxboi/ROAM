@@ -99,3 +99,15 @@ export function describeRestore({ trips, saved, replaced }: RestoreSummary): str
     : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
   return `Restored ${list}`;
 }
+
+/** "1 trip and 2 saved rides": the same phrasing, for what is about to go. */
+export function describeStored({ trips, saved, compare }: { trips: number; saved: number; compare: number }): string {
+  const parts: string[] = [];
+  if (trips) parts.push(`${trips} trip${trips === 1 ? '' : 's'}`);
+  if (saved) parts.push(`${saved} saved ride${saved === 1 ? '' : 's'}`);
+  if (compare) parts.push(`${compare} ride${compare === 1 ? '' : 's'} set aside to compare`);
+  if (!parts.length) return 'nothing';
+  return parts.length === 1
+    ? parts[0]
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}

@@ -10,13 +10,16 @@ import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from 
 const SAVE_DELAY = 400;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>(() => parseState(readStorage(KEY)));
+  // One read at mount: useRef evaluates its argument on every render, and this
+  // provider re-renders on every keystroke in the planner.
+  const [initial] = useState(() => { const raw = readStorage(KEY); return { raw, state: parseState(raw) }; });
+  const [state, setState] = useState<State>(initial.state);
   const [toast, setToast] = useState('');
   const [storageError, setStorageError] = useState(() => !isStorageAvailable());
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<State | null>(null);
-  const lastWritten = useRef<string | null>(readStorage(KEY));
+  const lastWritten = useRef<string | null>(initial.raw);
   // Committed state, readable from event handlers without re-creating callbacks.
   const latest = useRef(state);
   useEffect(() => { latest.current = state; }, [state]);
@@ -65,8 +68,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Adopt writes from another tab so two open tabs don't silently diverge.
   useEffect(() => subscribeStorage(KEY, raw => {
     if (raw === lastWritten.current) return;
-    lastWritten.current = raw;
-    setState(parseState(raw));
+    const incoming = parseState(raw);
+    if (pending.current === null) {
+      // Nothing waiting to be written here, so the other tab's state is simply
+      // the newer one.
+      lastWritten.current = raw;
+      setState(incoming);
+      return;
+    }
+    // Something is being edited in this tab. Merging keeps those edits — the
+    // trip being typed into has the later updatedAt — rather than letting a
+    // heart tapped in another tab revert them. lastWritten stays put so the
+    // merged result is written out on the next flush.
+    setState(current => mergeState(current, incoming).state);
   }), []);
 
   const toggleSaved = useCallback((id: string) => {

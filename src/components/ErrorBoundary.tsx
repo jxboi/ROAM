@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
+import { isChunkLoadError } from '../lib/lazy-route';
 
 type Props = { children: ReactNode; /** Changing this value clears the error, e.g. on navigation. */ resetKey?: string };
 type ErrorState = { error: Error | null };
@@ -24,6 +25,19 @@ export class ErrorBoundary extends Component<Props, ErrorState> {
     console.error('ROAM: unrecoverable render error', error, info.componentStack);
   }
 
+  /**
+   * React caches a lazy import's rejection for the life of the page, so
+   * re-rendering a route whose chunk failed just re-throws the same error.
+   * Only a fresh load can recover that one.
+   */
+  private retry() {
+    if (isChunkLoadError(this.state.error)) {
+      window.location.reload();
+      return;
+    }
+    this.setState({ error: null });
+  }
+
   override render() {
     if (!this.state.error) return this.props.children;
     return (
@@ -33,7 +47,7 @@ export class ErrorBoundary extends Component<Props, ErrorState> {
           <h2>That road just closed on us.</h2>
           <p>Something went wrong on this page. Your saved rides and trips are still stored in this browser.</p>
           <div className="error-actions">
-            <button className="button primary" onClick={() => this.setState({ error: null })}>Try this page again</button>
+            <button className="button primary" onClick={() => this.retry()}>Try this page again</button>
             <a className="button secondary" href="/">Back to the rides</a>
           </div>
         </div>

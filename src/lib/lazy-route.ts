@@ -2,6 +2,17 @@ import { lazy, type ComponentType } from 'react';
 
 const RELOAD_KEY = 'roam-chunk-reload';
 
+/**
+ * A chunk that will not load, as each engine words it. Anything else — a
+ * TypeError from the module's own top-level code, say — is a real error and
+ * reloading would only hide it.
+ */
+export function isChunkLoadError(error: unknown): boolean {
+  if (!error) return false;
+  const described = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /dynamically imported module|module script failed|Loading chunk|ChunkLoadError|Failed to fetch/i.test(described);
+}
+
 function alreadyRetried(): boolean {
   try {
     return sessionStorage.getItem(RELOAD_KEY) === '1';
@@ -45,7 +56,10 @@ export function lazyRoute<T extends ComponentType<Record<string, never>>>(
       forgetRetry();
       return { default: loaded[exportName] as T };
     } catch (error) {
-      if (alreadyRetried() || typeof window === 'undefined' || !rememberRetry()) throw error;
+      // Offline, the reload would land on the browser's network error page and
+      // take the whole app with it; the boundary's message is kinder.
+      const recoverable = isChunkLoadError(error) && navigator.onLine !== false;
+      if (!recoverable || alreadyRetried() || typeof window === 'undefined' || !rememberRetry()) throw error;
       window.location.reload();
       // Hold the Suspense fallback rather than flashing an error mid-reload.
       return new Promise<never>(() => {});

@@ -145,6 +145,15 @@ describe('calendar file format',()=>{
   for(const line of rejoined.split('\r\n'))expect(line).toMatch(/^[A-Z-]+[;:]/);
   expect(rejoined).toContain('A very long note A very long note');
  });
+ it('escapes every line break, including the carriage returns a restored file can carry',()=>{
+  const trip=createTrip(rides[0]);
+  trip.startDate='2027-06-15';
+  trip.days[0].notes='First line\r\nSecond line\rThird line\nFourth line';
+  const calendar=planCalendar(trip);
+  // No raw control characters survive into the file.
+  expect(calendar.replace(/\r\n/g,'')).not.toMatch(/[\r\n]/);
+  expect(unfold(calendar)).toContain('First line\\nSecond line\\nThird line\\nFourth line');
+ });
  it('does not split a multi-byte character across the fold',()=>{
   const trip=createTrip(rides[0]);
   trip.startDate='2027-06-15';

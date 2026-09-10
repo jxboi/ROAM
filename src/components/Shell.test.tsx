@@ -158,6 +158,18 @@ describe('removing stored rides and trips', () => {
     saved: [rides[1].id], compare: [], trips: [createTrip(rides[0])],
   }));
 
+  it('is offered for a comparison alone, which it also clears', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(KEY, JSON.stringify({ saved: [], compare: [rides[0].id, rides[1].id], trips: [] }));
+    renderShell();
+    const dialog = await openProfile(user);
+    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
+    expect(within(dialog).getByRole('group', { name: 'Confirm removing your rides and trips' }))
+      .toHaveTextContent('Remove 2 rides set aside to compare from this browser?');
+    await user.click(within(dialog).getByRole('button', { name: 'Yes, remove them' }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(KEY)!).compare).toEqual([]));
+  });
+
   it('is not offered when there is nothing stored', async () => {
     const user = userEvent.setup();
     renderShell();

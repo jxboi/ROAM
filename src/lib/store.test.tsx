@@ -133,8 +133,27 @@ describe('store', () => {
     expect(saved()).toBe(first.id);
   });
 
+  it('keeps edits in flight here when another tab writes', async () => {
+    const user = setup();
+    await user.click(screen.getByText('new trip'));
+    await user.click(screen.getByText('rename'));
+    // A write from elsewhere that predates this tab's rename.
+    const elsewhere = JSON.stringify({ saved: [third.id], compare: [], trips: [] });
+    localStorage.setItem(KEY, elsewhere);
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: elsewhere }));
+    });
+    // The other tab's saved ride arrives; the trip being edited here survives.
+    await waitFor(() => expect(saved()).toBe(third.id));
+    expect(screen.getByTestId('trips')).toHaveTextContent('Renamed');
+    await waitFor(() => expect(stored().trips[0].name).toBe('Renamed'));
+  });
+
   it('adopts a change made in another tab', async () => {
     setup();
+    // Once this tab has nothing waiting to be written, the other tab's state
+    // replaces it wholesale, so a removal made there arrives too.
+    await flushed();
     const payload = JSON.stringify({ saved: [third.id], compare: [], trips: [] });
     localStorage.setItem(KEY, payload);
     act(() => {

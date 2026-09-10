@@ -80,9 +80,15 @@ test.describe('accessibility', () => {
 
   test('announces client-side navigation to assistive technology', async ({ page }) => {
     await page.goto('/');
-    await page.goto('/saved');
-    await shown(page.getByRole('link', { name: /Explore/ })).click();
-    await expect(page.locator('#route-announcer')).toContainText('page loaded');
+    await expect(page.locator('#route-announcer')).toHaveText('');
+
+    // Saved is a lazily loaded route, so the announcer must wait for it rather
+    // than reading out the page being left.
+    await shown(page.getByRole('link', { name: /Saved/ })).click();
+    await expect(page.locator('#route-announcer')).toHaveText('Your saved rides, page loaded');
+
+    await shown(page.getByRole('link', { name: /My trips/ })).click();
+    await expect(page.locator('#route-announcer')).toHaveText('My trips, page loaded');
   });
 
   test.describe('in forced colours', () => {

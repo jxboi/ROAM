@@ -27,15 +27,23 @@ const DOCUMENT = '/index.html';
 /** Files that must come from the network, never the app shell. */
 const PASS_THROUGH = /^\/(robots\.txt|sitemap\.xml)$/;
 
+async function precache(): Promise<void> {
+  const cache = await caches.open(SHELL_CACHE);
+  await Promise.all([...SHELL_URLS].map(async url => {
+    // Bypass the HTTP cache while installing. index.html is served with
+    // must-revalidate, and precaching a copy of the previous build's document
+    // would point every navigation at assets this build no longer has.
+    const response = await fetch(new Request(url, { cache: 'reload' }));
+    if (!response.ok) throw new Error(`ROAM: cannot precache ${url} (${response.status})`);
+    // A host that redirects to a tidier URL hands back a response marked as
+    // redirected, and returning one of those for a navigation is a hard error.
+    // Store a plain copy instead.
+    await cache.put(url, response.redirected ? new Response(response.body, response) : response);
+  }));
+}
+
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(SHELL_CACHE).then(cache => cache.addAll(
-      // Bypass the HTTP cache while installing. index.html is served with
-      // must-revalidate, and precaching a copy of the previous build's document
-      // would point every navigation at assets this build no longer has.
-      [...SHELL_URLS].map(url => new Request(url, { cache: 'reload' })),
-    )),
-  );
+  event.waitUntil(precache());
 });
 
 self.addEventListener('activate', event => {
@@ -56,21 +64,31 @@ self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting();
 });
 
-async function cacheFirst(request: Request, cacheName: string): Promise<Response> {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  if (hit) return hit;
-  const response = await fetch(request);
-  if (response.ok && response.type === 'basic') {
-    await cache.put(request, response.clone());
-    void trim(cache, cacheName);
-  }
-  return response;
+/**
+ * Photography is answered from the cache and refreshed behind it. The image
+ * cache deliberately outlives a deploy, and these filenames carry no content
+ * hash, so a cache-first policy with no revalidation would pin a replaced photo
+ * in place for good.
+ */
+async function imageResponse(request: Request): Promise<{ response: Response; refresh: Promise<unknown> }> {
+  const cache = await caches.open(IMAGE_CACHE);
+  const cached = await cache.match(request);
+  const network = fetch(request)
+    .then(async response => {
+      if (response.ok && response.type === 'basic') {
+        await cache.put(request, response.clone());
+        await trim(cache);
+      }
+      return response;
+    })
+    .catch(() => undefined);
+  if (cached) return { response: cached, refresh: network };
+  const fresh = await network;
+  return { response: fresh ?? Response.error(), refresh: Promise.resolve() };
 }
 
 /** Keeps the runtime image cache from growing without bound, oldest first. */
-async function trim(cache: Cache, cacheName: string) {
-  if (cacheName !== IMAGE_CACHE) return;
+async function trim(cache: Cache) {
   const keys = await cache.keys();
   for (const key of keys.slice(0, Math.max(0, keys.length - IMAGE_LIMIT))) await cache.delete(key);
 }
@@ -105,7 +123,11 @@ self.addEventListener('fetch', event => {
   }
 
   if (request.destination === 'image') {
-    event.respondWith(cacheFirst(request, IMAGE_CACHE).catch(() => Response.error()));
+    const settled = imageResponse(request).catch(() => ({ response: Response.error(), refresh: Promise.resolve() }));
+    // The refresh has to outlive the response, or the fetch is cancelled the
+    // moment the cached copy is handed over.
+    event.waitUntil(settled.then(({ refresh }) => refresh));
+    event.respondWith(settled.then(({ response }) => response));
   }
 });
 

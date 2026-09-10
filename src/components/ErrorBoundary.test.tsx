@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -39,6 +39,39 @@ describe('error boundary', () => {
     );
     expect(screen.getByRole('alert')).toBeInTheDocument();
     rerender(<ErrorBoundary resetKey="/saved"><Boom explode={false} /></ErrorBoundary>);
+    expect(screen.getByText('The page rendered')).toBeInTheDocument();
+  });
+});
+
+describe('recovering from a chunk that will not load', () => {
+  const reload = vi.fn();
+
+  beforeEach(() => {
+    reload.mockClear();
+    Object.defineProperty(window, 'location', { value: { ...window.location, reload }, configurable: true, writable: true });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  function Missing(): never {
+    throw new Error('Failed to fetch dynamically imported module: /assets/Planner-abc.js');
+  }
+
+  it('reloads instead of re-rendering, which React would answer with the same error', async () => {
+    render(<ErrorBoundary><Missing /></ErrorBoundary>);
+    await userEvent.click(screen.getByRole('button', { name: /try this page again/i }));
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('still re-renders in place for an ordinary error', async () => {
+    let broken = true;
+    function Flaky() {
+      if (broken) throw new TypeError('cannot read properties of null');
+      return <p>The page rendered</p>;
+    }
+    render(<ErrorBoundary><Flaky /></ErrorBoundary>);
+    broken = false;
+    await userEvent.click(screen.getByRole('button', { name: /try this page again/i }));
+    expect(reload).not.toHaveBeenCalled();
     expect(screen.getByText('The page rendered')).toBeInTheDocument();
   });
 });
