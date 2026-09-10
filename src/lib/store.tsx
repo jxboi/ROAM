@@ -1,27 +1,116 @@
-import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { StoreContext, type State } from './store-context';
 import { rideById, type Ride } from '../data/rides';
 import { createTrip, type Trip } from './planning';
-const KEY='roam-planner-v1';
-const EMPTY:State={saved:[],compare:[],trips:[]};
-function readState():State {
-  try{
-    const data=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(!data||typeof data!=='object')return EMPTY;
-    const ids=(value:unknown)=>Array.isArray(value)?[...new Set(value.filter((id):id is string=>typeof id==='string'&&!!rideById(id)))]:[];
-    const trips=Array.isArray(data.trips)?data.trips.filter((trip:Trip)=>trip&&typeof trip.id==='string'&&typeof trip.name==='string'&&!!rideById(trip.rideId)&&Array.isArray(trip.days)&&trip.days.length>0&&trip.days.every(day=>day&&typeof day.id==='string'&&typeof day.title==='string'&&typeof day.notes==='string'&&Number.isFinite(day.km))&&Array.isArray(trip.checklist)&&typeof trip.notes==='string'&&typeof trip.startDate==='string'&&Number.isFinite(trip.riders)&&trip.riders>=1&&trip.riders<=12&&trip.costs&&['bike','stay','food','fuel','extras'].every(key=>Number.isFinite(trip.costs[key as keyof Trip['costs']])&&trip.costs[key as keyof Trip['costs']]>=0)):[];
-    return {saved:ids(data.saved),compare:ids(data.compare).slice(0,3),trips};
-  }catch{return EMPTY;}
-}
-export function StoreProvider({children}:{children:ReactNode}) {
-  const [state,setState]=useState<State>(readState),[toast,setToast]=useState(''),[storageError,setStorageError]=useState(false);
-  const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
-  const notify=useCallback((message:string)=>{setToast(message);if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>setToast(''),3500);},[]);
-  useEffect(()=>()=>{if(timer.current)clearTimeout(timer.current);},[]);
-  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(state));setStorageError(false);}catch{setStorageError(true);}},[state]);
-  const toggleSaved=(id:string)=>{if(!rideById(id))return;const exists=state.saved.includes(id);setState(s=>({...s,saved:s.saved.includes(id)?s.saved.filter(x=>x!==id):[...s.saved,id]}));notify(exists?'Removed from saved rides':'Saved for the roads ahead');};
-  const toggleCompare=(id:string)=>{if(!rideById(id))return;if(state.compare.length>=3&&!state.compare.includes(id)){notify('Compare up to 3 rides. Remove one to add another.');return;}setState(s=>({...s,compare:s.compare.includes(id)?s.compare.filter(x=>x!==id):s.compare.length<3?[...s.compare,id]:s.compare}));};
-  const newTrip=(ride:Ride)=>{const trip=createTrip(ride);setState(s=>({...s,trips:[trip,...s.trips]}));notify('Your next adventure starts here');return trip.id;};
-  const updateTrip=(id:string,update:Partial<Trip>)=>setState(s=>({...s,trips:s.trips.map(trip=>trip.id===id?{...trip,...update,id:trip.id,rideId:trip.rideId,updatedAt:new Date().toISOString()}:trip)}));
-  return <StoreContext.Provider value={{...state,toggleSaved,toggleCompare,clearCompare:()=>setState(s=>({...s,compare:[]})),newTrip,updateTrip,deleteTrip:(id)=>{setState(s=>({...s,trips:s.trips.filter(t=>t.id!==id)}));notify('Trip deleted');},notify,toast,storageError}}>{children}</StoreContext.Provider>;
+import { KEY, parseState } from './persistence';
+import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from './storage';
+
+/** Notes and budgets change on every keystroke; batch the writes instead. */
+const SAVE_DELAY = 400;
+
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<State>(() => parseState(readStorage(KEY)));
+  const [toast, setToast] = useState('');
+  const [storageError, setStorageError] = useState(() => !isStorageAvailable());
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<State | null>(null);
+  const lastWritten = useRef<string | null>(readStorage(KEY));
+  // Committed state, readable from event handlers without re-creating callbacks.
+  const latest = useRef(state);
+  useEffect(() => { latest.current = state; }, [state]);
+
+  const notify = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(''), 3500);
+  }, []);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+
+  const flush = useCallback(() => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    const next = pending.current;
+    pending.current = null;
+    if (!next) return;
+    const json = JSON.stringify(next);
+    if (json === lastWritten.current) return;
+    if (writeStorage(KEY, json)) {
+      lastWritten.current = json;
+      setStorageError(false);
+    } else {
+      setStorageError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    pending.current = state;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flush, SAVE_DELAY);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [state, flush]);
+
+  // A backgrounded or closing tab never gets its debounce timer back.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+      flush();
+    };
+  }, [flush]);
+
+  // Adopt writes from another tab so two open tabs don't silently diverge.
+  useEffect(() => subscribeStorage(KEY, raw => {
+    if (raw === lastWritten.current) return;
+    lastWritten.current = raw;
+    setState(parseState(raw));
+  }), []);
+
+  const toggleSaved = useCallback((id: string) => {
+    if (!rideById(id)) return;
+    notify(latest.current.saved.includes(id) ? 'Removed from saved rides' : 'Saved for the roads ahead');
+    setState(s => ({ ...s, saved: s.saved.includes(id) ? s.saved.filter(x => x !== id) : [...s.saved, id] }));
+  }, [notify]);
+
+  const toggleCompare = useCallback((id: string) => {
+    if (!rideById(id)) return;
+    const { compare } = latest.current;
+    if (compare.length >= 3 && !compare.includes(id)) {
+      notify('Compare up to 3 rides. Remove one to add another.');
+      return;
+    }
+    setState(s => ({
+      ...s,
+      compare: s.compare.includes(id) ? s.compare.filter(x => x !== id) : s.compare.length < 3 ? [...s.compare, id] : s.compare,
+    }));
+  }, [notify]);
+
+  const clearCompare = useCallback(() => setState(s => ({ ...s, compare: [] })), []);
+
+  const newTrip = useCallback((ride: Ride) => {
+    const trip = createTrip(ride);
+    setState(s => ({ ...s, trips: [trip, ...s.trips] }));
+    notify('Your next adventure starts here');
+    return trip.id;
+  }, [notify]);
+
+  const updateTrip = useCallback((id: string, update: Partial<Trip>) => setState(s => ({
+    ...s,
+    trips: s.trips.map(trip => trip.id === id
+      ? { ...trip, ...update, id: trip.id, rideId: trip.rideId, createdAt: trip.createdAt, updatedAt: new Date().toISOString() }
+      : trip),
+  })), []);
+
+  const deleteTrip = useCallback((id: string) => {
+    setState(s => ({ ...s, trips: s.trips.filter(trip => trip.id !== id) }));
+    notify('Trip deleted');
+  }, [notify]);
+
+  const value = useMemo(() => ({
+    ...state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, notify, toast, storageError,
+  }), [state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, notify, toast, storageError]);
+
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

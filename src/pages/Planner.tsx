@@ -4,6 +4,7 @@ import { ArrowLeft, Check, CalendarDays, Users, Bike, Download, Route, Wallet, L
 import { rideById, type Costs } from '../data/rides';
 import { useStore } from '../lib/store-context';
 import { addDays, CHECKLIST, downloadFile, formatDate, money, planCalendar, planMarkdown, tripBudget, type PlanDay } from '../lib/planning';
+import { uid } from '../lib/id';
 import { Arrow, EmptyState, Modal } from '../components/ui';
 export function Planner(){
  const {id}=useParams(),store=useStore(),navigate=useNavigate();const trip=store.trips.find(t=>t.id===id);const ride=trip?rideById(trip.rideId):undefined;
@@ -12,7 +13,7 @@ export function Planner(){
  const update=(patch:Parameters<typeof store.updateTrip>[1])=>store.updateTrip(trip.id,patch);
  const budget=tripBudget(trip),distance=trip.days.reduce((total,day)=>total+day.km,0),outOfSeason=trip.startDate&&!ride.months.includes(Number(trip.startDate.slice(5,7)));
  const updateDay=(dayId:string,patch:Partial<PlanDay>)=>update({days:trip.days.map(day=>day.id===dayId?{...day,...patch}:day)});
- const addRest=(index:number)=>{const days=[...trip.days],previous=days[index];days.splice(index+1,0,{id:crypto.randomUUID(),title:`A slow day in ${previous.stay}`,description:'Sleep in, explore on foot, or just enjoy being here. This day is yours.',km:0,stay:previous.stay,notes:'',rest:true});update({days});store.notify('A little breathing room, added.');};
+ const addRest=(index:number)=>{const days=[...trip.days],previous=days[index];days.splice(index+1,0,{id:uid(),title:`A slow day in ${previous.stay}`,description:'Sleep in, explore on foot, or just enjoy being here. This day is yours.',km:0,stay:previous.stay,notes:'',rest:true});update({days});store.notify('A little breathing room, added.');};
  const exportPlan=()=>{downloadFile(`roam-${ride.id}-trip.md`,planMarkdown(trip,ride),'text/markdown');store.notify('Your trip plan has been downloaded');};
  const exportCalendar=()=>{if(!trip.startDate)return;downloadFile(`roam-${ride.id}.ics`,planCalendar(trip),'text/calendar');store.notify('Calendar file downloaded. Open it in your calendar app.');};
  const copyPlan=async()=>{try{await navigator.clipboard.writeText(planMarkdown(trip,ride));store.notify('Trip plan copied');}catch{store.notify('Copy isn’t available here. Download your plan instead.');}};

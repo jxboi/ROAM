@@ -3,3 +3,8 @@ dist/
 .DS_Store
 *.local
 tmp/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/

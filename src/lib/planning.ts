@@ -1,4 +1,5 @@
 import { dailyCost, type Ride, type Costs } from '../data/rides';
+import { uid } from './id';
 export type Filters = { query: string; month: string; style: string; duration: string; difficulty: string; budget: string; sort: string };
 export const defaultFilters: Filters = {query:'',month:'',style:'',duration:'',difficulty:'',budget:'',sort:'recommended'};
 export function filterRides(rides: Ride[], filters: Filters) {
@@ -28,7 +29,7 @@ export const CHECKLIST = [
 ];
 export function createTrip(ride: Ride): Trip {
   const now = new Date().toISOString();
-  return {id:crypto.randomUUID(),rideId:ride.id,name:`My ${ride.name.replace(/^The /,'')} ride`,startDate:'',riders:1,ownBike:false,costs:{...ride.costs},days:ride.itinerary.map(day=>({...day,id:crypto.randomUUID(),notes:'',rest:false})),checklist:[],notes:'',createdAt:now,updatedAt:now};
+  return {id:uid(),rideId:ride.id,name:`My ${ride.name.replace(/^The /,'')} ride`,startDate:'',riders:1,ownBike:false,costs:{...ride.costs},days:ride.itinerary.map(day=>({id:uid(),title:day.title,description:day.description,km:day.km,stay:day.stay,notes:'',rest:false})),checklist:[],notes:'',createdAt:now,updatedAt:now};
 }
 export function tripBudget(trip: Pick<Trip,'days'|'costs'|'ownBike'|'riders'>) {
   const days = trip.days.length, nights = Math.max(0,days-1), ridingDays = trip.days.filter(day=>!day.rest).length;
@@ -64,8 +65,14 @@ export function planMarkdown(trip:Trip,ride:Ride) {
   const budget=tripBudget(trip);
   return `# ${trip.name}\n\n${ride.country} · ${trip.days.length} days · ${trip.days.reduce((sum,d)=>sum+d.km,0)} km approx.\n${trip.startDate ? `${formatDate(trip.startDate)} – ${formatDate(addDays(trip.startDate,trip.days.length-1))}` : 'Dates to decide'}\n${trip.riders} rider(s) · ${trip.ownBike?'Own motorcycle':'Rental motorcycle'}\n\n## Itinerary\n\n${trip.days.map((day,i)=>`### Day ${i+1}${trip.startDate?` · ${formatDate(addDays(trip.startDate,i),true)}`:''}: ${day.title}\n${day.km} km approx. · Overnight: ${day.stay}\n${day.description}${day.notes?`\nNotes: ${day.notes}`:''}`).join('\n\n')}\n\n## Estimated budget (USD, all riders)\n\n${Object.entries(budget.parts).map(([key,value])=>`${key}: ${money(value)}`).join('\n')}\n10% buffer: ${money(budget.buffer)}\nTotal estimate: ${money(budget.total)}\nAccommodation assumes ${budget.nights} nights and a separate room per rider. Flights, visas, insurance, deposits and one-way fees are excluded. These are editable planning estimates, not live quotes.\n\n## Preparation\n\n${CHECKLIST.map(item=>`- [${trip.checklist.includes(item.id)?'x':' '}] ${item.title}`).join('\n')}\n\n## Notes\n\n${trip.notes||'No notes yet.'}\n\n## Route reference\n\n${ride.source.name}: ${ride.source.url}\n\nROAM sample itinerary. Distances and daily routes are approximate planning suggestions, not verified navigation. Check current local access, conditions, documents and provider terms before travel.\n`;
 }
-function icsEscape(value:string){return value.replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');}
+function icsEscape(value:unknown){return String(value??'').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');}
+/** An unparseable stored timestamp must not take the whole export down. */
+function icsStamp(value:string){
+  const parsed=new Date(value);
+  const date=Number.isFinite(parsed.getTime())?parsed:new Date();
+  return date.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+}
 export function planCalendar(trip:Trip) {
   if(!trip.startDate)return '';
-  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ROAM//Trip Planner//EN','CALSCALE:GREGORIAN',...trip.days.flatMap((day,i)=>['BEGIN:VEVENT',`UID:${trip.id}-${day.id}@roam.local`,`DTSTAMP:${new Date(trip.updatedAt).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'')}`,`DTSTART;VALUE=DATE:${addDays(trip.startDate,i).replace(/-/g,'')}`,`DTEND;VALUE=DATE:${addDays(trip.startDate,i+1).replace(/-/g,'')}`,`SUMMARY:${icsEscape(`Day ${i+1}: ${day.title}`)}`,`DESCRIPTION:${icsEscape(`${day.description}\n${day.notes}\n${day.km} km approx.`)}`,`LOCATION:${icsEscape(day.stay)}`,'END:VEVENT']),'END:VCALENDAR'].join('\r\n');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ROAM//Trip Planner//EN','CALSCALE:GREGORIAN',...trip.days.flatMap((day,i)=>['BEGIN:VEVENT',`UID:${trip.id}-${day.id}@roam.local`,`DTSTAMP:${icsStamp(trip.updatedAt)}`,`DTSTART;VALUE=DATE:${addDays(trip.startDate,i).replace(/-/g,'')}`,`DTEND;VALUE=DATE:${addDays(trip.startDate,i+1).replace(/-/g,'')}`,`SUMMARY:${icsEscape(`Day ${i+1}: ${day.title}`)}`,`DESCRIPTION:${icsEscape(`${day.description}\n${day.notes}\n${day.km} km approx.`)}`,`LOCATION:${icsEscape(day.stay)}`,'END:VEVENT']),'END:VCALENDAR'].join('\r\n');
 }
