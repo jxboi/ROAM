@@ -75,11 +75,13 @@ test.describe('accessibility', () => {
     await page.goto('/');
     await page.goto('/saved');
     await shown(page.getByRole('link', { name: /Explore/ })).click();
-    await expect(page.locator('[role="status"][aria-live="polite"]').first()).toContainText('page loaded');
+    await expect(page.locator('#route-announcer')).toContainText('page loaded');
   });
 
   test('reaches the main content with the keyboard alone', async ({ page }) => {
     await page.goto('/');
+    // The router marks its links once hydrated; before that a Tab goes nowhere.
+    await page.locator('a[data-discover="true"]').first().waitFor();
     await page.keyboard.press('Tab');
     const skip = page.locator('.skip-link');
     await expect(skip).toBeFocused();

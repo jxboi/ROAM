@@ -79,8 +79,9 @@ describe('app shell', () => {
   });
 
   it('keeps a polite live region for announcing navigation', () => {
-    renderShell();
-    const announcers = screen.getAllByRole('status');
-    expect(announcers.some(node => node.getAttribute('aria-live') === 'polite')).toBe(true);
+    const { container } = renderShell();
+    const announcer = container.querySelector('#route-announcer');
+    expect(announcer).toHaveAttribute('role', 'status');
+    expect(announcer).toHaveAttribute('aria-live', 'polite');
   });
 });

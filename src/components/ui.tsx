@@ -12,4 +12,6 @@ export function Modal({open,onClose,title,children,className=''}:{open:boolean;o
 }
 export function EmptyState({title,description,action='Explore the rides',to='/',icon,children}:{title:string;description:string;action?:string;to?:string;icon?:ReactNode;children?:ReactNode}){return <div className="empty-state"><div className="empty-icon">{icon||<Compass size={34}/>}</div><h2>{title}</h2><p>{description}</p>{children||<Link className="button primary" to={to}>{action}<Arrow/></Link>}</div>}
 export function PageHeading({title,description,children}:{title:string;description:string;children?:ReactNode}){return <div className="page-heading"><div><h1>{title}</h1><p>{description}</p></div>{children}</div>}
+/** Holds the page's place while a lazily loaded route arrives. */
+export function RouteFallback(){return <div className="route-fallback" role="status" aria-live="polite"><span className="sr-only">Loading</span><span className="route-fallback-bar"/><span className="route-fallback-bar short"/></div>}
 export function Note({children}:{children:ReactNode}){return <p className="fine-print">{children}</p>}

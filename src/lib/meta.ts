@@ -15,24 +15,24 @@ export type PageMeta = {
 export const pageTitle = (title?: string) =>
   title ? `${title} · ${SITE_NAME}` : `${SITE_NAME} — ${SITE_TAGLINE}`;
 
-let announcement = '';
-let announced = false;
+let currentPage = '';
 const listeners = new Set<() => void>();
 
-function announce(title: string) {
-  // The first title belongs to the initial page load, which assistive tech
-  // reads anyway; announcing it again would duplicate it.
-  if (!announced) { announced = true; announcement = ''; return; }
-  if (announcement === title) return;
-  announcement = title;
+function setCurrentPage(title: string) {
+  if (currentPage === title) return;
+  currentPage = title;
   listeners.forEach(listener => listener());
 }
 
-/** The current page name, for a polite live region that reports SPA navigation. */
+/**
+ * The name of the page now showing. The shell turns this into a polite
+ * announcement once the visitor has actually navigated — the first page is
+ * read out by the browser anyway.
+ */
 export function useRouteAnnouncement(): string {
   return useSyncExternalStore(
     listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    () => announcement,
+    () => currentPage,
     () => '',
   );
 }
@@ -85,7 +85,7 @@ export function useDocumentMeta({ title, description, path, image, type = 'websi
     upsertMeta('name', 'twitter:description', resolvedDescription);
     upsertMeta('name', 'twitter:image', card);
     upsertLink('canonical', url);
-    announce(title ?? SITE_NAME);
+    setCurrentPage(title ?? SITE_NAME);
   }, [resolvedTitle, resolvedDescription, resolvedPath, resolvedImage, type, noIndex, title]);
 }
 

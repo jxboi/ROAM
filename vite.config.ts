@@ -49,6 +49,19 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react(), seoFiles(env.VITE_SITE_URL ?? '')],
-    build: { target: 'es2022', sourcemap: true, reportCompressedSize: true },
+    build: {
+      target: 'es2022',
+      sourcemap: true,
+      reportCompressedSize: true,
+      rollupOptions: {
+        output: {
+          // React and the router change far less often than the app does, so
+          // keep them in their own long-lived chunk across deploys.
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
+          },
+        },
+      },
+    },
   };
 });

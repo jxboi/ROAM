@@ -9,11 +9,14 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
 
-/** Kilobytes, gzipped. Raise deliberately, with a reason. */
+/**
+ * Kilobytes, gzipped, with roughly 15% headroom over the current build.
+ * Raise deliberately, with a reason.
+ */
 const BUDGET = {
-  initialJs: 130,
-  initialCss: 20,
-  totalJs: 200,
+  initialJs: 118,
+  initialCss: 15,
+  totalJs: 135,
 };
 
 if (!existsSync(dist)) {
