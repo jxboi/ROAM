@@ -82,7 +82,27 @@ function icsStamp(value:string){
   const date=Number.isFinite(parsed.getTime())?parsed:new Date();
   return date.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
 }
-export function planCalendar(trip:Trip) {
+/**
+ * RFC 5545 caps a content line at 75 octets and continues it on the next line
+ * behind a single space. A day's description easily runs past that, and strict
+ * calendar parsers reject the file rather than guessing.
+ */
+function foldIcsLine(line:string) {
+  const encoder=new TextEncoder();
+  if(encoder.encode(line).length<=75)return line;
+  const parts:string[]=[];
+  let current='',bytes=0,limit=75;
+  for(const character of line){
+    const size=encoder.encode(character).length;
+    if(bytes+size>limit){parts.push(current);current='';bytes=0;limit=74;}
+    current+=character;bytes+=size;
+  }
+  if(current)parts.push(current);
+  return parts.join('\r\n ');
+}
+export function planCalendar(trip:Trip,name?:string) {
   if(!trip.startDate)return '';
-  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ROAM//Trip Planner//EN','CALSCALE:GREGORIAN',...trip.days.flatMap((day,i)=>['BEGIN:VEVENT',`UID:${trip.id}-${day.id}@roam.local`,`DTSTAMP:${icsStamp(trip.updatedAt)}`,`DTSTART;VALUE=DATE:${addDays(trip.startDate,i).replace(/-/g,'')}`,`DTEND;VALUE=DATE:${addDays(trip.startDate,i+1).replace(/-/g,'')}`,`SUMMARY:${icsEscape(`Day ${i+1}: ${day.title}`)}`,`DESCRIPTION:${icsEscape(`${day.description}\n${day.notes}\n${day.km} km approx.`)}`,`LOCATION:${icsEscape(day.stay)}`,'END:VEVENT']),'END:VCALENDAR'].join('\r\n');
+  const title=icsEscape(name||trip.name);
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ROAM//Trip Planner//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',`NAME:${title}`,`X-WR-CALNAME:${title}`,...trip.days.flatMap((day,i)=>['BEGIN:VEVENT',`UID:${trip.id}-${day.id}@roam.local`,`DTSTAMP:${icsStamp(trip.updatedAt)}`,`DTSTART;VALUE=DATE:${addDays(trip.startDate,i).replace(/-/g,'')}`,`DTEND;VALUE=DATE:${addDays(trip.startDate,i+1).replace(/-/g,'')}`,`SUMMARY:${icsEscape(`Day ${i+1}: ${day.title}`)}`,`DESCRIPTION:${icsEscape(`${day.description}\n${day.notes}\n${day.km} km approx.`)}`,`LOCATION:${icsEscape(day.stay)}`,'END:VEVENT']),'END:VCALENDAR'];
+  return lines.map(foldIcsLine).join('\r\n');
 }

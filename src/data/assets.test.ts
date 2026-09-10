@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { rides } from './rides';
@@ -56,5 +56,15 @@ describe('shipped assets', () => {
   it('keeps the manifest shortcuts pointing at real routes', () => {
     const routes = new Set(['/', '/saved', '/compare', '/trips']);
     for (const shortcut of manifest.shortcuts ?? []) expect(routes.has(shortcut.url), shortcut.url).toBe(true);
+  });
+
+  it('keeps every shipped image within a weight the ladder assumes', () => {
+    // A drop-in replacement that skipped `npm run assets` would land here.
+    const CAP_KB = 400;
+    const oversized = ['images', 'social', 'icons']
+      .flatMap(folder => readdirSync(publicFile(folder)).map(file => `${folder}/${file}`))
+      .map(file => ({ file, kb: Math.round(statSync(publicFile(file)).size / 1024) }))
+      .filter(entry => entry.kb > CAP_KB);
+    expect(oversized).toEqual([]);
   });
 });
