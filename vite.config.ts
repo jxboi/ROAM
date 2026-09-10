@@ -74,7 +74,7 @@ function publicShellFiles(publicDir: string) {
 
 /**
  * Builds src/sw.ts as a second entry at a stable /sw.js, and replaces its
- * __WB_MANIFEST placeholder with the real shell file list. This is the whole
+ * __ROAM_SHELL__ placeholder with the real shell file list. This is the whole
  * job a PWA plugin would do here — the caching policy is hand-written in
  * src/sw.ts — so it is done inline rather than pulling in the toolchain.
  */
@@ -116,12 +116,12 @@ function serviceWorker(): Plugin {
         this.error('the precache manifest has no /index.html, so the app could not open offline');
         return;
       }
-      if (!worker.code.includes('self.__WB_MANIFEST')) {
-        this.error('src/sw.ts no longer references self.__WB_MANIFEST');
+      if (!worker.code.includes('self.__ROAM_SHELL__')) {
+        this.error('src/sw.ts no longer references self.__ROAM_SHELL__');
         return;
       }
       worker.code = worker.code
-        .replace('self.__WB_MANIFEST', JSON.stringify(manifest))
+        .replace('self.__ROAM_SHELL__', JSON.stringify(manifest))
         // The substitution invalidates the offsets, so ship no map rather than
         // a misleading one. The worker is a few kilobytes of readable code.
         .replace(/\n?\/\/# sourceMappingURL=sw\.js\.map\s*$/, '\n');

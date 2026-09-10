@@ -4,9 +4,9 @@
 // because a stale or over-eager cache is the classic way to break a deploy.
 type PrecacheEntry = { url: string; revision: string };
 /** Replaced at build time with the list of shell files and their revisions. */
-declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: PrecacheEntry[] };
+declare const self: ServiceWorkerGlobalScope & { __ROAM_SHELL__: PrecacheEntry[] };
 
-const manifest: PrecacheEntry[] = self.__WB_MANIFEST ?? [];
+const manifest: PrecacheEntry[] = self.__ROAM_SHELL__ ?? [];
 
 /** FNV-1a over the injected manifest: a new build gets a new cache. */
 function fingerprint(entries: PrecacheEntry[]): string {
