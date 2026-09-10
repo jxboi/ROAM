@@ -17,6 +17,9 @@ const BUDGET = {
   initialJs: 118,
   initialCss: 15,
   totalJs: 135,
+  // Everything the service worker downloads before it can serve the app
+  // offline. Imagery is deliberately not in here.
+  offlineShell: 320,
 };
 
 if (!existsSync(dist)) {
@@ -45,10 +48,26 @@ const measured = {
   totalJs: kb(sum(allJs)),
 };
 
+/** The files the worker precaches, read back out of the built worker. */
+function offlineShellFiles() {
+  const worker = path.join(dist, 'sw.js');
+  if (!existsSync(worker)) return [];
+  const manifest = readFileSync(worker, 'utf8').match(/\[\{"url":.*?\}\]/s);
+  if (!manifest) {
+    console.error('sw.js has no precache manifest; the offline shell cannot be measured.');
+    process.exit(1);
+  }
+  return JSON.parse(manifest[0]).map(entry => entry.url.replace(/^\//, ''));
+}
+
+const shell = offlineShellFiles();
+measured.offlineShell = kb(sum(shell));
+
 const labels = {
   initialJs: `Initial JavaScript (${initialJs.length} file${initialJs.length === 1 ? '' : 's'})`,
   initialCss: `Initial CSS (${initialCss.length} file${initialCss.length === 1 ? '' : 's'})`,
   totalJs: `All JavaScript (${allJs.length} chunks)`,
+  offlineShell: `Offline shell (${shell.length} files)`,
 };
 
 let failed = false;
