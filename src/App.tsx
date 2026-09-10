@@ -1,17 +1,18 @@
-import { lazy, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { StoreProvider } from './lib/store';
 import { Shell } from './components/Shell';
 import { Discover } from './pages/Discover';
+import { lazyRoute } from './lib/lazy-route';
 
 // Discovery is the landing page and stays in the entry chunk. Everything a
 // visitor reaches later is fetched when they go there.
-const RideDetail = lazy(() => import('./pages/RideDetail').then(m => ({ default: m.RideDetail })));
-const Saved = lazy(() => import('./pages/Collections').then(m => ({ default: m.Saved })));
-const Compare = lazy(() => import('./pages/Collections').then(m => ({ default: m.Compare })));
-const Trips = lazy(() => import('./pages/Collections').then(m => ({ default: m.Trips })));
-const Planner = lazy(() => import('./pages/Planner').then(m => ({ default: m.Planner })));
-const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
+const RideDetail = lazyRoute(() => import('./pages/RideDetail'), 'RideDetail');
+const Saved = lazyRoute(() => import('./pages/Collections'), 'Saved');
+const Compare = lazyRoute(() => import('./pages/Collections'), 'Compare');
+const Trips = lazyRoute(() => import('./pages/Collections'), 'Trips');
+const Planner = lazyRoute(() => import('./pages/Planner'), 'Planner');
+const NotFound = lazyRoute(() => import('./pages/NotFound'), 'NotFound');
 
 /**
  * Opening a ride is the next thing almost every visitor does, so fetch that

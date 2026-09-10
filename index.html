@@ -28,6 +28,14 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
+    <!-- iOS still reads these rather than the manifest when adding to the home
+         screen. black-translucent pairs with viewport-fit=cover and the
+         safe-area insets the layout already uses. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ROAM" />
+
     <!-- The hero is the largest contentful paint on the landing page. -->
     <link rel="preload" as="image" href="/images/hero-panorama.webp" media="(min-width: 641px)" fetchpriority="high" />
     <link rel="preload" as="image" href="/images/hero.webp" media="(max-width: 640px)" fetchpriority="high" />
