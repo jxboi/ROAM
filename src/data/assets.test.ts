@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { rides } from './rides';
+import { heroSrcSet, panoramaSrcSet, rideSrcSet } from '../lib/images';
 
 // vitest runs from the project root.
 const root = process.cwd();
@@ -30,8 +31,26 @@ describe('shipped assets', () => {
     const referenced = [...indexHtml.matchAll(/(?:href|content|src)="(\/[^"]+)"/g)]
       .map(match => match[1])
       .filter(url => !url.startsWith('/src/'));
+    const preloaded = [...indexHtml.matchAll(/imagesrcset="([^"]+)"/g)]
+      .flatMap(match => match[1].split(',').map(candidate => candidate.trim().split(/\s+/)[0]));
     expect(referenced.length).toBeGreaterThan(4);
-    for (const url of referenced) expect(existsSync(publicFile(url.replace(/^\//, ''))), url).toBe(true);
+    expect(preloaded.length).toBeGreaterThan(4);
+    for (const url of [...referenced, ...preloaded]) expect(existsSync(publicFile(url.replace(/^\//, ''))), url).toBe(true);
+  });
+
+  it('preloads exactly the hero candidates the page renders', () => {
+    const [panorama, hero] = [...indexHtml.matchAll(/imagesrcset="([^"]+)"/g)].map(match => match[1]);
+    expect(panorama).toBe(panoramaSrcSet());
+    expect(hero).toBe(heroSrcSet());
+  });
+
+  it('ships every width the responsive image helpers offer', () => {
+    const candidates = [
+      ...rides.flatMap(ride => rideSrcSet(ride.image).split(',')),
+      ...heroSrcSet().split(','),
+      ...panoramaSrcSet().split(','),
+    ].map(candidate => candidate.trim().split(/\s+/)[0]);
+    for (const url of candidates) expect(existsSync(publicFile(url.replace(/^\//, ''))), url).toBe(true);
   });
 
   it('keeps the manifest shortcuts pointing at real routes', () => {

@@ -36,9 +36,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ROAM" />
 
-    <!-- The hero is the largest contentful paint on the landing page. -->
-    <link rel="preload" as="image" href="/images/hero-panorama.webp" media="(min-width: 641px)" fetchpriority="high" />
-    <link rel="preload" as="image" href="/images/hero.webp" media="(max-width: 640px)" fetchpriority="high" />
+    <!-- The hero is the largest contentful paint on the landing page. These
+         candidate sets must stay identical to the ones the hero renders with,
+         or the browser preloads one file and then fetches another. -->
+    <link
+      rel="preload"
+      as="image"
+      media="(min-width: 641px)"
+      imagesrcset="/images/hero-panorama-1200.webp 1200w, /images/hero-panorama-1440.webp 1440w, /images/hero-panorama-1800.webp 1800w, /images/hero-panorama.webp 2172w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      media="(max-width: 640px)"
+      imagesrcset="/images/hero-480.webp 480w, /images/hero-800.webp 800w, /images/hero-1200.webp 1200w, /images/hero.webp 1536w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
   </head>
   <body>
     <div id="root"></div>

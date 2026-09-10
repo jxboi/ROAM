@@ -42,7 +42,9 @@ export default defineConfig({
   // The suite runs against the real build served with the production header
   // and rewrite rules, so a broken CSP or a 404 on a deep link fails here.
   webServer: {
-    command: `npm run build && PORT=${port} npm run serve`,
+    // Building with the origin set exercises the sitemap and the absolute
+    // canonical URLs, which are otherwise only reachable in a real deployment.
+    command: `VITE_SITE_URL=${baseURL} npm run build && PORT=${port} npm run serve`,
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 180_000,

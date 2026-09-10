@@ -56,6 +56,7 @@ Requires Node 22 (see `.nvmrc`).
 | `src/lib/persistence.ts` | Reads stored state back, repairing anything malformed. |
 | `src/lib/backup.ts` | The backup file format, and merging a restore into what is already here. |
 | `src/sw.ts` | The service worker: what is precached, what is cached as it is used, and how updates land. |
+| `src/lib/images.ts` | The responsive image candidate sets, and how wide each surface renders a photo. |
 | `src/lib/store.tsx` | The React store: saved rides, comparisons, trips, and persistence. |
 | `src/lib/meta.ts` | Per-route title, description, Open Graph tags and structured data. |
 | `src/pages`, `src/components` | The routed pages and the shared UI. |
@@ -77,7 +78,7 @@ points at a real route is dropped rather than crashing an export.
 | `npm run test:e2e` | Playwright end-to-end and accessibility suites. |
 | `npm run typecheck` / `npm run lint` | Types and lint (lint fails on warnings). |
 | `npm run check:size` | Fail if the gzipped first-load bundle exceeds its budget. |
-| `npm run assets` | Regenerate share cards and PWA icons from the source imagery. |
+| `npm run assets` | Regenerate share cards, responsive image widths and PWA icons from the source imagery. |
 | `npm run verify` | Everything except the end-to-end suite. |
 
 ## Validation

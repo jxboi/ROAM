@@ -15,6 +15,19 @@ const icons = path.join(root, 'public', 'icons');
 
 const CARD = { width: 1200, height: 630 };
 
+/**
+ * Display widths the layout actually asks for. A destination photo fills a
+ * ~400px card slot on desktop and the viewport width on a phone; shipping the
+ * 1280px original into either is most of the page weight.
+ */
+const RESPONSIVE_WIDTHS = {
+  // Steps of roughly 1.4x, chosen so the common cases land on a close fit: a
+  // ~380px card at 1x, the same at 2x, and a phone-width photo at 2x and 3x.
+  ride: [400, 560, 800, 1120],
+  hero: [480, 800, 1200],
+  'hero-panorama': [1200, 1440, 1800],
+};
+
 /** Read the `image` field straight from the ride data so the two cannot drift. */
 async function rideImages() {
   const source = await readFile(path.join(root, 'src', 'data', 'rides.ts'), 'utf8');
@@ -45,12 +58,30 @@ function maskableSvg(mark) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 -13 90 90"><rect x="-13" y="-13" width="90" height="90" fill="#183b32"/>${inner}</svg>`;
 }
 
+/** Writes narrower copies of a source image alongside it, as name-<width>.webp. */
+async function variants(name, widths) {
+  const input = path.join(images, `${name}.webp`);
+  const { width: original } = await sharp(input).metadata();
+  const files = [];
+  for (const width of widths) {
+    if (!original || width >= original) continue;
+    const destination = path.join(images, `${name}-${width}.webp`);
+    await sharp(input).resize({ width, withoutEnlargement: true }).webp({ quality: 78, effort: 5 }).toFile(destination);
+    files.push(destination);
+  }
+  return files;
+}
+
 const written = [];
 await mkdir(social, { recursive: true });
 await mkdir(icons, { recursive: true });
 
 written.push(await card('hero-panorama', path.join(root, 'public', 'social-card.jpg')));
-for (const name of await rideImages()) written.push(await card(name, path.join(social, `${name}.jpg`)));
+for (const name of await rideImages()) {
+  written.push(await card(name, path.join(social, `${name}.jpg`)));
+  written.push(...await variants(name, RESPONSIVE_WIDTHS.ride));
+}
+for (const name of ['hero', 'hero-panorama']) written.push(...await variants(name, RESPONSIVE_WIDTHS[name]));
 
 // librsvg rejects trailing whitespace after the closing tag.
 const mark = (await readFile(path.join(root, 'public', 'favicon.svg'), 'utf8')).trim();

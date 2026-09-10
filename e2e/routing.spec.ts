@@ -70,6 +70,34 @@ test.describe('routing and metadata', () => {
     await expect(page.getByRole('heading', { name: /This road isn’t on our map/ })).toBeVisible();
   });
 
+  test('publishes a sitemap listing every ride', async ({ request, baseURL }) => {
+    const response = await request.get('/sitemap.xml');
+    expect(response.status()).toBe(200);
+    const sitemap = await response.text();
+    const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
+    expect(urls).toContain(`${baseURL}/`);
+    // Every ride the app can render is listed, and nothing private is.
+    const rideUrls = urls.filter(url => url.includes('/ride/'));
+    expect(rideUrls.length).toBe(8);
+    expect(new Set(rideUrls).size).toBe(rideUrls.length);
+    for (const url of urls) expect(url.startsWith(`${baseURL}/`)).toBe(true);
+    expect(urls.some(url => /\/(saved|compare|trips)/.test(url))).toBe(false);
+
+    const robots = await request.get('/robots.txt');
+    expect(await robots.text()).toContain(`Sitemap: ${baseURL}/sitemap.xml`);
+  });
+
+  test('every ride in the sitemap actually resolves', async ({ request, page }) => {
+    const sitemap = await (await request.get('/sitemap.xml')).text();
+    const rideUrls = [...sitemap.matchAll(/<loc>([^<]+\/ride\/[^<]+)<\/loc>/g)].map(match => match[1]);
+    for (const url of rideUrls) {
+      await page.goto(url);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', url);
+    }
+  });
+
   test('publishes robots.txt and the web app manifest', async ({ request }) => {
     const robots = await request.get('/robots.txt');
     expect(robots.status()).toBe(200);
@@ -102,5 +130,36 @@ test.describe('routing and metadata', () => {
       await expect(page.locator('#main')).toBeVisible();
     }
     expect(problems).toEqual([]);
+  });
+});
+
+test.describe('images', () => {
+  test('sends a photo sized for the slot it lands in', async ({ browser, baseURL }) => {
+    // A card is about 380px wide on a desktop grid; the 1280px original there
+    // was most of the page weight.
+    for (const [width, ratio, expected] of [[1280, 1, /-400\.webp$/], [1280, 2, /-800\.webp$/], [390, 2, /-800\.webp$/]] as const) {
+      const context = await browser.newContext({ baseURL, viewport: { width, height: 800 }, deviceScaleFactor: ratio });
+      const page = await context.newPage();
+      await page.goto('/?all=true');
+      const chosen = await page.locator('article.ride-card img').first().evaluate(
+        (image: HTMLImageElement) => image.currentSrc,
+      );
+      expect(chosen, `${width}px at ${ratio}x`).toMatch(expected);
+      await context.close();
+    }
+  });
+
+  test('preloads the same hero file it goes on to render', async ({ page }) => {
+    const requested: string[] = [];
+    page.on('request', request => {
+      if (/\/images\/hero/.test(request.url())) requested.push(request.url().split('/').pop()!);
+    });
+    await page.goto('/');
+    await expect(page.locator('img.hero-image')).toBeVisible();
+    const rendered = await page.locator('img.hero-image').evaluate((image: HTMLImageElement) => image.currentSrc);
+    // One hero file, fetched once: a preload that disagrees with the srcset
+    // costs a second download of the largest image on the page.
+    expect(new Set(requested).size).toBe(1);
+    expect(rendered.endsWith(requested[0])).toBe(true);
   });
 });

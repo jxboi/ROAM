@@ -85,14 +85,17 @@ does not apply those rules.
 
 ## Regenerating imagery
 
-Share cards and icons are derived from the source photography and the mark:
+Share cards, responsive image widths and icons are all derived from the source
+photography and the mark:
 
 ```sh
 npm run assets
 ```
 
 Run it after changing a destination photo, adding a ride, or changing
-`public/favicon.svg`, and commit the results.
+`public/favicon.svg`, and commit the results. The width ladder lives in that
+script and is mirrored in `src/lib/images.ts`; a test fails if the two disagree
+about which files exist.
 
 ## The service worker
 
