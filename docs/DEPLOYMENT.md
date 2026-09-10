@@ -93,3 +93,26 @@ npm run assets
 
 Run it after changing a destination photo, adding a ride, or changing
 `public/favicon.svg`, and commit the results.
+
+## The service worker
+
+`dist/sw.js` is generated at build time from `src/sw.ts` with the list of shell
+files injected. It precaches the shell (about 570 KB: HTML, JS, CSS, fonts and
+icons) and caches destination photography as it is actually viewed, so a first
+visit does not download every image.
+
+Two things must hold for updates to land:
+
+- `sw.js` must be served with a short cache lifetime. The committed header rules
+  give it `max-age=0, must-revalidate` along with the rest of the HTML-shaped
+  responses; do not move it under a long-lived rule.
+- The content security policy must allow `worker-src 'self'`. It does, in all
+  three host configs.
+
+A new build does not take over a running tab: the new worker installs and waits,
+the app shows a "newer version is ready" prompt, and only then does the page
+reload onto it. Routes are code-split, so swapping builds under a live tab is
+how you get a failed chunk request mid-plan.
+
+Nothing here breaks a browser without service worker support: registration
+failure is caught and the site works as an ordinary web app.

@@ -10,12 +10,12 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text-summary', 'lcov'],
+      reporter: ['text', 'text-summary', 'lcov'],
       // Pages are exercised end to end in e2e/, at two viewports, against the
       // real build. The unit gate covers the logic and components underneath.
       include: ['src/lib/**/*.ts*', 'src/components/**/*.tsx'],
       exclude: ['src/**/*.test.{ts,tsx}'],
-      thresholds: { statements: 90, branches: 82, functions: 90, lines: 95 },
+      thresholds: { statements: 93, branches: 85, functions: 94, lines: 97 },
     },
   },
 });

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { EmptyState, Modal, Note, PageHeading, RideStats } from './ui';
+import { EmptyState, Modal, Note, PageHeading, RideStats, RouteFallback } from './ui';
 
 const inRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -68,5 +68,15 @@ describe('supporting components', () => {
   it('marks small print as such', () => {
     const { container } = render(<Note>Estimates only.</Note>);
     expect(container.querySelector('.fine-print')).toHaveTextContent('Estimates only.');
+  });
+});
+
+describe('route fallback', () => {
+  it('announces that a page is on its way without collapsing the layout', () => {
+    const { container } = render(<RouteFallback />);
+    const region = screen.getByRole('status');
+    expect(region).toHaveAttribute('aria-live', 'polite');
+    expect(region).toHaveTextContent('Loading');
+    expect(container.querySelectorAll('.route-fallback-bar')).toHaveLength(2);
   });
 });

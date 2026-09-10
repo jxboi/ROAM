@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import { rides } from './src/data/rides';
 
 /**
@@ -48,7 +49,26 @@ function seoFiles(siteUrl: string): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react(), seoFiles(env.VITE_SITE_URL ?? '')],
+    plugins: [
+      react(),
+      seoFiles(env.VITE_SITE_URL ?? ''),
+      VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        // The app registers the worker itself, so the update prompt is ours.
+        injectRegister: false,
+        registerType: 'prompt',
+        // public/manifest.webmanifest is the source of truth.
+        manifest: false,
+        injectManifest: {
+          // The shell only: imagery is cached as it is actually looked at,
+          // rather than making a first visit download every destination.
+          globPatterns: ['**/*.{js,css,html,woff2}', 'favicon.svg', 'manifest.webmanifest', 'icons/*.png'],
+          globIgnores: ['**/*.map', 'social/**', 'images/**'],
+        },
+      }),
+    ],
     build: {
       target: 'es2022',
       sourcemap: true,

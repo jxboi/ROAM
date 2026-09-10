@@ -39,6 +39,9 @@ Requires Node 22 (see `.nvmrc`).
   a copyable plan.
 - A JSON backup of everything saved on the device, and a restore that adds those
   plans back alongside anything already there rather than replacing them.
+- Installable, and readable with no signal: the app shell is precached and
+  destination photography is cached as it is looked at, so a plan stays open on
+  the road. A new build waits behind a prompt rather than swapping itself in.
 - Keyboard focus management, accessible dialogs, reduced-motion support and
   responsive touch controls.
 
@@ -50,6 +53,7 @@ Requires Node 22 (see `.nvmrc`).
 | `src/lib/planning.ts` | Filtering, budget maths, dates and the Markdown/ICS exports. |
 | `src/lib/persistence.ts` | Reads stored state back, repairing anything malformed. |
 | `src/lib/backup.ts` | The backup file format, and merging a restore into what is already here. |
+| `src/sw.ts` | The service worker: what is precached, what is cached as it is used, and how updates land. |
 | `src/lib/store.tsx` | The React store: saved rides, comparisons, trips, and persistence. |
 | `src/lib/meta.ts` | Per-route title, description, Open Graph tags and structured data. |
 | `src/pages`, `src/components` | The routed pages and the shared UI. |
@@ -106,7 +110,8 @@ travel. All photos are AI-generated illustrative travel imagery.
 
 Plans are stored in the current browser and do not sync between devices. Take a
 backup from the profile panel before clearing browser data or moving to another
-device, and export a trip to keep or share a single plan. The app does not
-provide offline maps or bookings.
+device, and export a trip to keep or share a single plan. Pages and plans you
+have already opened stay available offline; the app does not provide offline
+maps or bookings.
 
 Built with React, TypeScript, Vite, Lucide, Manrope and DM Sans.

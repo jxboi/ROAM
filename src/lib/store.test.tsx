@@ -157,3 +157,11 @@ describe('store', () => {
     }
   });
 });
+
+describe('store contract', () => {
+  it('refuses to be used outside its provider, rather than failing later', () => {
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<Harness />)).toThrow('StoreProvider is required');
+    quiet.mockRestore();
+  });
+});
