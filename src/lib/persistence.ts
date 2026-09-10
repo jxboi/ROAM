@@ -76,15 +76,18 @@ function normalizeTrip(value: unknown): Trip | null {
   };
 }
 
-/** Exported for tests: turns whatever is in storage into state the UI can trust. */
+/** Turns whatever is in storage into state the UI can trust. */
 export function parseState(raw: string | null): State {
   if (!raw) return EMPTY;
-  let data: unknown;
   try {
-    data = JSON.parse(raw);
+    return normalizeState(JSON.parse(raw));
   } catch {
     return EMPTY;
   }
+}
+
+/** The same guarantees for data that did not come from storage, such as a restored backup. */
+export function normalizeState(data: unknown): State {
   if (!data || typeof data !== 'object') return EMPTY;
   const record = data as Record<string, unknown>;
   const rideIds = (value: unknown) =>

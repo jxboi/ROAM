@@ -66,6 +66,13 @@ test.describe('accessibility', () => {
     await expectNoViolations(page);
   });
 
+  test('the profile panel, including the backup controls', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Your travel space' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test('the not-found page', async ({ page }) => {
     await page.goto('/nowhere-in-particular');
     await expectNoViolations(page);

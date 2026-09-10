@@ -37,6 +37,8 @@ Requires Node 22 (see `.nvmrc`).
   days, and a 10% contingency.
 - A preparation checklist, Markdown itinerary export, calendar (ICS) export, and
   a copyable plan.
+- A JSON backup of everything saved on the device, and a restore that adds those
+  plans back alongside anything already there rather than replacing them.
 - Keyboard focus management, accessible dialogs, reduced-motion support and
   responsive touch controls.
 
@@ -47,6 +49,7 @@ Requires Node 22 (see `.nvmrc`).
 | `src/data/rides.ts` | The eight routes: itineraries, costs, seasons and source references. |
 | `src/lib/planning.ts` | Filtering, budget maths, dates and the Markdown/ICS exports. |
 | `src/lib/persistence.ts` | Reads stored state back, repairing anything malformed. |
+| `src/lib/backup.ts` | The backup file format, and merging a restore into what is already here. |
 | `src/lib/store.tsx` | The React store: saved rides, comparisons, trips, and persistence. |
 | `src/lib/meta.ts` | Per-route title, description, Open Graph tags and structured data. |
 | `src/pages`, `src/components` | The routed pages and the shared UI. |
@@ -101,8 +104,9 @@ navigation. Each destination links to an official tourism or park reference.
 Check current road access, weather, rental terms and licence requirements before
 travel. All photos are AI-generated illustrative travel imagery.
 
-Plans are stored in the current browser and do not sync between devices. Export
-a copy to keep or share a plan; clearing browser storage removes local saved
-data. The app does not provide offline maps or bookings.
+Plans are stored in the current browser and do not sync between devices. Take a
+backup from the profile panel before clearing browser data or moving to another
+device, and export a trip to keep or share a single plan. The app does not
+provide offline maps or bookings.
 
 Built with React, TypeScript, Vite, Lucide, Manrope and DM Sans.

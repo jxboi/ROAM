@@ -3,6 +3,7 @@ import { StoreContext, type State } from './store-context';
 import { rideById, type Ride } from '../data/rides';
 import { createTrip, type Trip } from './planning';
 import { KEY, parseState } from './persistence';
+import { mergeState, type RestoreSummary } from './backup';
 import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from './storage';
 
 /** Notes and budgets change on every keystroke; batch the writes instead. */
@@ -108,9 +109,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     notify('Trip deleted');
   }, [notify]);
 
+  const restore = useCallback((incoming: State): RestoreSummary => {
+    const { state: merged, summary } = mergeState(latest.current, incoming);
+    setState(merged);
+    return summary;
+  }, []);
+
   const value = useMemo(() => ({
-    ...state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, notify, toast, storageError,
-  }), [state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, notify, toast, storageError]);
+    ...state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, restore, notify, toast, storageError,
+  }), [state, toggleSaved, toggleCompare, clearCompare, newTrip, updateTrip, deleteTrip, restore, notify, toast, storageError]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
