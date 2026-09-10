@@ -1,5 +1,7 @@
 # ROAM
 
+[![CI](https://github.com/jxboi/ROAM/actions/workflows/ci.yml/badge.svg)](https://github.com/jxboi/ROAM/actions/workflows/ci.yml)
+
 A mobile-first motorcycle trip planner. Discover eight curated rides across six
 continents, filter by destination, season and riding style, save favourites,
 compare three routes, and turn a ride into a personal plan.
@@ -80,13 +82,22 @@ points at a real route is dropped rather than crashing an export.
 
 ## Validation
 
-`npm run verify` runs the typecheck, lint, 75 unit tests with coverage gates,
-the production build, and the bundle budget. `npm run test:e2e` runs the browser
-suites against the built app, served with the deployed header and rewrite rules,
-across Chromium, Firefox and WebKit at desktop and phone sizes: discovery and filtering, saving, comparison,
-the full planning flow including both file exports, deep links, per-route
-metadata, the security headers, and axe accessibility scans at WCAG 2.1 AA on
-every page and dialog.
+`npm run verify` runs the typecheck, lint, the unit tests behind coverage gates,
+the production build, and the bundle budget.
+
+`npm run test:e2e` runs the browser suites against the built app, served with the
+deployed header and rewrite rules, across Chromium, Firefox and WebKit at desktop
+and phone sizes:
+
+- discovery, filtering, sorting and shareable filter URLs
+- saving, the three-way comparison, and the whole planning flow including the
+  Markdown and calendar exports
+- backup and restore, including carrying a trip into a browser that has never
+  seen it
+- offline: the app, a deep link, a saved trip and its photography with the
+  network switched off
+- deep links, per-route metadata and the production security headers
+- axe scans at WCAG 2.2 AA on every page and dialog, plus forced-colours mode
 
 Both run in CI on every push and pull request, alongside an audit of production
 dependencies.

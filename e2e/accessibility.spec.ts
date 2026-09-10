@@ -7,7 +7,7 @@ async function expectNoViolations(page: Page) {
   // reports false failures. Let any running animation settle first.
   await page.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));
   const { violations } = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
     .analyze();
   expect(
     violations.map(v => `${v.id} (${v.impact}): ${v.nodes.map(n => n.target.join(' ')).join(', ')}`),
@@ -83,6 +83,37 @@ test.describe('accessibility', () => {
     await page.goto('/saved');
     await shown(page.getByRole('link', { name: /Explore/ })).click();
     await expect(page.locator('#route-announcer')).toContainText('page loaded');
+  });
+
+  test.describe('in forced colours', () => {
+    test.use({ forcedColors: 'active' });
+    test.skip(({ browserName }) => browserName !== 'chromium', 'forced colours emulation');
+
+    test('still distinguishes controls that normally rely on a background colour', async ({ page }) => {
+      await page.goto('/?all=true');
+      const widths = await page.evaluate(() => {
+        const width = (selector: string) => {
+          const el = document.querySelector(selector);
+          return el ? parseFloat(getComputedStyle(el).borderTopWidth) : -1;
+        };
+        return {
+          activeChip: width('.chip.active'),
+          idleChip: width('.chip:not(.active)'),
+          primaryButton: width('.button.primary'),
+        };
+      });
+      // Selection and emphasis survive as borders, which forced colours keeps.
+      expect(widths.idleChip).toBeGreaterThan(0);
+      expect(widths.activeChip).toBeGreaterThan(widths.idleChip);
+      expect(widths.primaryButton).toBeGreaterThan(0);
+      await expectNoViolations(page);
+    });
+
+    test('keeps the planner readable', async ({ page }) => {
+      await planRide(page, 'dolomites');
+      await page.getByRole('tab', { name: 'Get ready' }).click();
+      await expectNoViolations(page);
+    });
   });
 
   test('reaches the main content with the keyboard alone', async ({ page }) => {

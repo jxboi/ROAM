@@ -34,3 +34,19 @@
 .practical-number{color:#5c775c}.month-grid>div{color:#5d6a5b}.add-comparison{color:#5c735c}
 :root{--muted:#616d63}.day-number{color:#4c6947}.planner-tabs button>span{color:#51644c}.delete-trip{opacity:1}@media(max-width:640px){.mobile-nav a{color:#616e61}}
 .checklist-score small{color:#596e53}
+/* Windows High Contrast and other forced-colours modes drop author background
+   colours, which is where several controls carry their whole meaning: a
+   selected chip, a primary button, a filled progress bar. Chromium paints a
+   backplate behind text over an author background even when it is a system
+   colour, so state is signalled with borders rather than colour. */
+@media(forced-colors:active){
+ .button,.chip,.option,.filter-toggle,.hero-link,.export-options>button,.add-comparison,.compare-pick,.save-button{border:1px solid currentColor}
+ .button.primary,.button.danger-button{border-width:2px}
+ .chip.active,.option.selected,.save-button.saved,.compare-pick.selected{border-width:3px}
+ .trip-progress i,.checklist-progress i{background:Highlight}
+ .month-grid .recommended{outline:2px solid Highlight;outline-offset:-2px}
+ .month-grid .recommended i{background:Highlight}
+ .checklist-item.checked .custom-checkbox{border-width:3px}
+ .detail-tabs button[aria-selected="true"],.planner-tabs button[aria-selected="true"]{border-bottom:3px solid currentColor}
+ .timeline-dot,.day-number{border:1px solid currentColor}
+}
