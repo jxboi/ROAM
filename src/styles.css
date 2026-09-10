@@ -30,5 +30,7 @@
 @media(max-width:370px){.ride-stats{font-size:10px}}
 .custom-checkbox{pointer-events:none}.checklist-item>input{z-index:1}
 .footer-note{color:#687363}.add-rest{color:#62785a}.autosave{color:#566f4d}.budget-summary>p,.buffer-line small,.summary-total small{color:#596e53}.month-grid>div{color:#687361}
+/* Contrast corrections verified against WCAG 2.1 AA by the axe end-to-end scan. */
+.practical-number{color:#5c775c}.month-grid>div{color:#5d6a5b}.add-comparison{color:#5c735c}
 :root{--muted:#616d63}.day-number{color:#4c6947}.planner-tabs button>span{color:#51644c}.delete-trip{opacity:1}@media(max-width:640px){.mobile-nav a{color:#616e61}}
 .checklist-score small{color:#596e53}

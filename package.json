@@ -13,7 +13,9 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -b --force",
     "assets": "node scripts/generate-assets.mjs",
-    "serve": "node scripts/serve-dist.mjs"
+    "serve": "node scripts/serve-dist.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
