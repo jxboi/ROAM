@@ -32,6 +32,13 @@ describe('deployment configuration', () => {
     expect(read('deploy/nginx.conf')).toContain('try_files $uri $uri/ /index.html');
   });
 
+  it('does not let a host tidy the document URL out from under the worker', () => {
+    // cleanUrls redirects /index.html to /. The service worker precaches that
+    // document and returns it for navigations, and a response marked as
+    // redirected is rejected there — every navigation would fail.
+    expect(vercel.cleanUrls).toBeUndefined();
+  });
+
   it('sets the same security headers on every host', () => {
     for (const header of REQUIRED) {
       expect(headersFile, `_headers is missing ${header}`).toContain(`${header}:`);
