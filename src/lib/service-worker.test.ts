@@ -31,18 +31,22 @@ function fakeContainer(registration: FakeRegistration | Promise<never>, controll
 }
 
 const reload = vi.fn();
+// jsdom defines the useful members on Location.prototype, so spreading copies
+// nothing; the descriptor has to be put back or the rest of the file inherits
+// a Location with only reload on it.
+const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')!;
 
 beforeEach(() => {
   vi.stubEnv('PROD', true);
   reload.mockClear();
-  Object.defineProperty(window, 'location', {
-    value: { ...window.location, reload },
-    configurable: true,
-    writable: true,
-  });
+    Object.defineProperty(window, 'location', {
+      value: Object.assign(Object.create(Object.getPrototypeOf(window.location)), { reload, href: window.location.href, pathname: window.location.pathname, origin: window.location.origin }),
+      configurable: true,
+    });
 });
 
 afterEach(() => {
+  Object.defineProperty(window, 'location', originalLocation);
   vi.unstubAllEnvs();
   Reflect.deleteProperty(navigator, 'serviceWorker');
 });

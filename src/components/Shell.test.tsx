@@ -153,7 +153,7 @@ describe('backing up and restoring from the profile panel', () => {
   });
 });
 
-describe('removing stored rides and trips', () => {
+describe('removing stored data', () => {
   const filled = () => localStorage.setItem(KEY, JSON.stringify({
     saved: [rides[1].id], compare: [], trips: [createTrip(rides[0])],
   }));
@@ -163,8 +163,8 @@ describe('removing stored rides and trips', () => {
     localStorage.setItem(KEY, JSON.stringify({ saved: [], compare: [rides[0].id, rides[1].id], trips: [] }));
     renderShell();
     const dialog = await openProfile(user);
-    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
-    expect(within(dialog).getByRole('group', { name: 'Confirm removing your rides and trips' }))
+    await user.click(within(dialog).getByRole('button', { name: /Remove my saved data/ }));
+    expect(within(dialog).getByRole('group', { name: 'Confirm removing your saved data' }))
       .toHaveTextContent('Remove 2 rides set aside to compare from this browser?');
     await user.click(within(dialog).getByRole('button', { name: 'Yes, remove them' }));
     await waitFor(() => expect(JSON.parse(localStorage.getItem(KEY)!).compare).toEqual([]));
@@ -174,7 +174,7 @@ describe('removing stored rides and trips', () => {
     const user = userEvent.setup();
     renderShell();
     const dialog = await openProfile(user);
-    expect(within(dialog).queryByRole('button', { name: /Remove my rides and trips/ })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Remove my saved data/ })).not.toBeInTheDocument();
   });
 
   it('asks first, and says exactly what would go', async () => {
@@ -182,8 +182,8 @@ describe('removing stored rides and trips', () => {
     filled();
     renderShell();
     const dialog = await openProfile(user);
-    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
-    expect(within(dialog).getByRole('group', { name: 'Confirm removing your rides and trips' }))
+    await user.click(within(dialog).getByRole('button', { name: /Remove my saved data/ }));
+    expect(within(dialog).getByRole('group', { name: 'Confirm removing your saved data' }))
       .toHaveTextContent('Remove 1 trip and 1 saved ride from this browser?');
   });
 
@@ -192,9 +192,9 @@ describe('removing stored rides and trips', () => {
     filled();
     renderShell();
     const dialog = await openProfile(user);
-    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
+    await user.click(within(dialog).getByRole('button', { name: /Remove my saved data/ }));
     await user.click(within(dialog).getByRole('button', { name: 'Keep them' }));
-    expect(within(dialog).getByRole('button', { name: /Remove my rides and trips/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Remove my saved data/ })).toBeInTheDocument();
     await waitFor(() => expect(JSON.parse(localStorage.getItem(KEY)!).trips).toHaveLength(1));
   });
 
@@ -203,7 +203,7 @@ describe('removing stored rides and trips', () => {
     filled();
     renderShell();
     const dialog = await openProfile(user);
-    await user.click(within(dialog).getByRole('button', { name: /Remove my rides and trips/ }));
+    await user.click(within(dialog).getByRole('button', { name: /Remove my saved data/ }));
     await user.click(within(dialog).getByRole('button', { name: 'Yes, remove them' }));
     expect(await screen.findByText('Your rides and trips have been removed')).toBeInTheDocument();
     await waitFor(() => {

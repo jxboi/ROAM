@@ -3,7 +3,7 @@ import { StoreContext, type State } from './store-context';
 import { rideById, type Ride } from '../data/rides';
 import { createTrip, type Trip } from './planning';
 import { EMPTY, KEY, parseState } from './persistence';
-import { mergeState, type RestoreSummary } from './backup';
+import { mergeConcurrent, mergeState, type RestoreSummary } from './backup';
 import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from './storage';
 
 /** Notes and budgets change on every keystroke; batch the writes instead. */
@@ -19,6 +19,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<State | null>(null);
+  /** True once something in this tab has changed and is not yet written out. */
+  const unsaved = useRef(false);
   const lastWritten = useRef<string | null>(initial.raw);
   // Committed state, readable from event handlers without re-creating callbacks.
   const latest = useRef(state);
@@ -37,9 +39,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     pending.current = null;
     if (!next) return;
     const json = JSON.stringify(next);
-    if (json === lastWritten.current) return;
+    if (json === lastWritten.current) { unsaved.current = false; return; }
     if (writeStorage(KEY, json)) {
       lastWritten.current = json;
+      unsaved.current = false;
       setStorageError(false);
     } else {
       setStorageError(true);
@@ -48,10 +51,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     pending.current = state;
+    // The first run is the state this tab loaded, not a change to it.
+    if (state !== initial.state) unsaved.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(flush, SAVE_DELAY);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [state, flush]);
+  }, [state, flush, initial.state]);
 
   // A backgrounded or closing tab never gets its debounce timer back.
   useEffect(() => {
@@ -67,20 +72,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Adopt writes from another tab so two open tabs don't silently diverge.
   useEffect(() => subscribeStorage(KEY, raw => {
+    // The key going away is site data being cleared, which is not ambiguous
+    // and is taken whatever this tab is in the middle of. It is checked before
+    // the no-change guard, which would otherwise swallow it in a tab that has
+    // not written anything yet.
+    if (raw === null) {
+      lastWritten.current = null;
+      setState(EMPTY);
+      return;
+    }
     if (raw === lastWritten.current) return;
     const incoming = parseState(raw);
-    if (pending.current === null) {
-      // Nothing waiting to be written here, so the other tab's state is simply
-      // the newer one.
+    if (!unsaved.current) {
       lastWritten.current = raw;
       setState(incoming);
       return;
     }
-    // Something is being edited in this tab. Merging keeps those edits — the
-    // trip being typed into has the later updatedAt — rather than letting a
-    // heart tapped in another tab revert them. lastWritten stays put so the
-    // merged result is written out on the next flush.
-    setState(current => mergeState(current, incoming).state);
+    // Something here is unwritten. Reconcile rather than replace, so a heart
+    // tapped in another tab cannot revert the notes being typed in this one.
+    // lastWritten stays put, so the result is written out on the next flush.
+    setState(current => mergeConcurrent(current, incoming));
   }), []);
 
   const toggleSaved = useCallback((id: string) => {

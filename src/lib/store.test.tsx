@@ -149,11 +149,20 @@ describe('store', () => {
     await waitFor(() => expect(stored().trips[0].name).toBe('Renamed'));
   });
 
+  it('adopts an emptied browser even mid-edit, since clearing site data is not ambiguous', async () => {
+    const user = setup();
+    await user.click(screen.getByText('new trip'));
+    act(() => {
+      localStorage.clear();
+      window.dispatchEvent(new StorageEvent('storage', { key: null, newValue: null }));
+    });
+    await waitFor(() => expect(screen.getByTestId('trips')).toBeEmptyDOMElement());
+  });
+
   it('adopts a change made in another tab', async () => {
     setup();
-    // Once this tab has nothing waiting to be written, the other tab's state
-    // replaces it wholesale, so a removal made there arrives too.
-    await flushed();
+    // Nothing has been changed here, so the other tab's state replaces this
+    // one wholesale and a removal made there arrives too.
     const payload = JSON.stringify({ saved: [third.id], compare: [], trips: [] });
     localStorage.setItem(KEY, payload);
     act(() => {

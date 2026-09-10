@@ -74,7 +74,7 @@ test.describe('backup and restore', () => {
   });
 });
 
-test.describe('removing stored rides and trips', () => {
+test.describe('removing stored data', () => {
   test('clears the device only after confirming, and survives a reload', async ({ page }) => {
     await planRide(page, 'dolomites');
     await page.goto('/?all=true');
@@ -82,8 +82,8 @@ test.describe('removing stored rides and trips', () => {
 
     await openProfile(page);
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('button', { name: /Remove my rides and trips/ }).click();
-    await expect(dialog.getByRole('group', { name: 'Confirm removing your rides and trips' }))
+    await dialog.getByRole('button', { name: /Remove my saved data/ }).click();
+    await expect(dialog.getByRole('group', { name: 'Confirm removing your saved data' }))
       .toContainText('Remove 1 trip and 1 saved ride');
 
     await dialog.getByRole('button', { name: 'Keep them' }).click();
@@ -92,7 +92,7 @@ test.describe('removing stored rides and trips', () => {
     await expect(page.locator('.trip-list-item')).toHaveCount(1);
 
     await openProfile(page);
-    await dialog.getByRole('button', { name: /Remove my rides and trips/ }).click();
+    await dialog.getByRole('button', { name: /Remove my saved data/ }).click();
     await dialog.getByRole('button', { name: 'Yes, remove them' }).click();
     await expect(toast(page)).toContainText('Your rides and trips have been removed');
     await dialog.getByRole('button', { name: /Let’s explore/ }).click();

@@ -5,12 +5,13 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Keyed on the branch rather than the event, so a push and the pull request it
-# belongs to share one run instead of doing the same work twice. A newer commit
-# makes an in-flight run irrelevant, except on the default branch, where the
-# result is worth keeping.
+# One group per event and branch. A newer commit makes an in-flight run
+# irrelevant, except on the default branch, where the result is worth keeping.
+# The two events are kept in separate groups deliberately: sharing one would
+# have them cancel each other on the same commit, and a cancelled run reads as
+# a failed required check.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
@@ -23,6 +24,9 @@ jobs:
   verify:
     name: Types, lint, unit tests, build
     runs-on: ubuntu-latest
+    # A branch in this repository is already covered by its push event, so the
+    # pull_request event only runs for forks, which push events cannot see.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -55,6 +59,9 @@ jobs:
   e2e:
     name: End-to-end and accessibility
     runs-on: ubuntu-latest
+    # A branch in this repository is already covered by its push event, so the
+    # pull_request event only runs for forks, which push events cannot see.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5

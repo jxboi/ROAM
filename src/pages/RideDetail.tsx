@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Heart, CalendarDays, MapPin, Route, Bike, Check, ExternalLink, GitCompareArrows, ChevronDown, Sun, Share2 } from 'lucide-react';
 import { rideById, dailyCost, MONTHS } from '../data/rides';
 import { useStore } from '../lib/store-context';
@@ -9,11 +9,12 @@ import { PHOTO_SIZES, ridePhoto, rideSrcSet } from '../lib/images';
 import { formatMonth, money } from '../lib/planning';
 import { Arrow, RideStats, EmptyState, Note } from '../components/ui';
 export function RideDetail(){
- const {id}=useParams();const ride=rideById(id||'');const store=useStore(),navigate=useNavigate();const [tab,setTab]=useState('Overview');
+ const {id}=useParams();const ride=rideById(id||'');const store=useStore(),navigate=useNavigate(),{pathname}=useLocation();const [tab,setTab]=useState('Overview');
  useDocumentMeta(ride
   ?{title:ride.name,description:`${ride.short} A ${ride.days}-day ${ride.difficulty.toLowerCase()} motorcycle route in ${ride.country}, best ridden ${ride.season}.`,path:`/ride/${ride.id}`,image:`/social/${ride.image}.jpg`,type:'article'}
-  :{title:'Ride not found',noIndex:true});
- useJsonLd(ride?{'@context':'https://schema.org','@type':'TouristTrip','name':ride.name,'description':ride.description,'image':absoluteUrl(`/images/${ride.image}.webp`),'url':absoluteUrl(`/ride/${ride.id}`),'touristType':'Motorcycle touring','itinerary':{'@type':'ItemList','numberOfItems':ride.itinerary.length,'itemListElement':ride.itinerary.map((day,index)=>({'@type':'ListItem',position:index+1,item:{'@type':'Place',name:day.stay,description:day.title}}))},'subjectOf':{'@type':'CreativeWork',name:ride.source.name,url:ride.source.url}}:null);
+  :{title:'Ride not found',path:pathname,noIndex:true});
+ const structuredData=useMemo(()=>ride?{'@context':'https://schema.org','@type':'TouristTrip','name':ride.name,'description':ride.description,'image':absoluteUrl(`/images/${ride.image}.webp`),'url':absoluteUrl(`/ride/${ride.id}`),'touristType':'Motorcycle touring','itinerary':{'@type':'ItemList','numberOfItems':ride.itinerary.length,'itemListElement':ride.itinerary.map((day,index)=>({'@type':'ListItem',position:index+1,item:{'@type':'Place',name:day.stay,description:day.title}}))},'subjectOf':{'@type':'CreativeWork',name:ride.source.name,url:ride.source.url}}:null,[ride]);
+ useJsonLd(structuredData);
  if(!ride)return <div className="container"><EmptyState title="This road isn’t on our map" description="The ride may have moved, or the link may be incomplete. There’s plenty more to explore."/></div>;
  const saved=store.saved.includes(ride.id),compared=store.compare.includes(ride.id);
  const plan=()=>navigate(`/trips/${store.newTrip(ride)}`);

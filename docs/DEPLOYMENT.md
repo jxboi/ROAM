@@ -112,6 +112,12 @@ dependency tree. It precaches the shell — HTML, JS, CSS, fonts and
 icons, around 270 KB over the wire, budgeted by `npm run check:size` — and caches destination photography as it is actually viewed, so a first
 visit does not download every image.
 
+The worker will not return a response marked as redirected for a navigation,
+so it normalises one if a host produces it — Vercel's `cleanUrls`, Netlify's
+Pretty URLs, a trailing-slash or `www` canonicalisation. `cleanUrls` is off in
+the committed `vercel.json`, and a test keeps it that way, because a redirect on
+`/index.html` would otherwise be precached.
+
 Two things must hold for updates to land:
 
 - `sw.js` must be served with a short cache lifetime. The committed header rules

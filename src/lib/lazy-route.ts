@@ -10,7 +10,24 @@ const RELOAD_KEY = 'roam-chunk-reload';
 export function isChunkLoadError(error: unknown): boolean {
   if (!error) return false;
   const described = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-  return /dynamically imported module|module script failed|Loading chunk|ChunkLoadError|Failed to fetch/i.test(described);
+  return /dynamically imported module|module script failed|Loading chunk|ChunkLoadError/i.test(described);
+}
+
+/**
+ * Whether reloading could plausibly help: the error is a chunk that would not
+ * load, the connection is up, and this page has not already tried. Shared with
+ * the error boundary, whose retry button faces the same failure.
+ */
+export function canReloadForChunk(error: unknown): boolean {
+  return isChunkLoadError(error)
+    && typeof window !== 'undefined'
+    && navigator.onLine !== false
+    && !alreadyRetried();
+}
+
+/** Records the attempt. False means it could not be recorded, so do not reload. */
+export function markChunkReload(): boolean {
+  return rememberRetry();
 }
 
 function alreadyRetried(): boolean {
@@ -58,8 +75,7 @@ export function lazyRoute<T extends ComponentType<Record<string, never>>>(
     } catch (error) {
       // Offline, the reload would land on the browser's network error page and
       // take the whole app with it; the boundary's message is kinder.
-      const recoverable = isChunkLoadError(error) && navigator.onLine !== false;
-      if (!recoverable || alreadyRetried() || typeof window === 'undefined' || !rememberRetry()) throw error;
+      if (!canReloadForChunk(error) || !markChunkReload()) throw error;
       window.location.reload();
       // Hold the Suspense fallback rather than flashing an error mid-reload.
       return new Promise<never>(() => {});

@@ -1,8 +1,10 @@
+import { useLocation } from 'react-router-dom';
 import { useDocumentMeta } from '../lib/meta';
 import { EmptyState } from '../components/ui';
 
 export function NotFound() {
-  useDocumentMeta({ title: 'Page not found', description: 'That page is not on the map.', noIndex: true });
+  const { pathname } = useLocation();
+  useDocumentMeta({ title: 'Page not found', description: 'That page is not on the map.', path: pathname, noIndex: true });
   return (
     <div className="container">
       <EmptyState

@@ -87,6 +87,12 @@ export function mergeState(current: State, incoming: State): { state: State; sum
   };
 }
 
+/** "a, b and c" — one phrasing, used by every sentence that lists counts. */
+function sentence(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? '';
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
 /** Plain-language confirmation of what a restore actually changed. */
 export function describeRestore({ trips, saved, replaced }: RestoreSummary): string {
   const parts: string[] = [];
@@ -94,10 +100,7 @@ export function describeRestore({ trips, saved, replaced }: RestoreSummary): str
   if (replaced) parts.push(`${replaced} newer trip${replaced === 1 ? '' : 's'}`);
   if (saved) parts.push(`${saved} saved ride${saved === 1 ? '' : 's'}`);
   if (!parts.length) return 'That backup is already here — nothing to add';
-  const list = parts.length === 1
-    ? parts[0]
-    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-  return `Restored ${list}`;
+  return `Restored ${sentence(parts)}`;
 }
 
 /** "1 trip and 2 saved rides": the same phrasing, for what is about to go. */
@@ -106,8 +109,31 @@ export function describeStored({ trips, saved, compare }: { trips: number; saved
   if (trips) parts.push(`${trips} trip${trips === 1 ? '' : 's'}`);
   if (saved) parts.push(`${saved} saved ride${saved === 1 ? '' : 's'}`);
   if (compare) parts.push(`${compare} ride${compare === 1 ? '' : 's'} set aside to compare`);
-  if (!parts.length) return 'nothing';
-  return parts.length === 1
-    ? parts[0]
-    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  return sentence(parts);
+}
+
+/**
+ * Reconciles this tab's state with a write from another one, while something
+ * here is still being edited.
+ *
+ * There is one document per origin and no per-item history, so the two tabs
+ * cannot both be right about a trip that only one of them has. This keeps
+ * both, which means a trip deleted in the other tab reappears — the rarer and
+ * more visible mistake — rather than discarding notes being typed here, which
+ * would be silent. The comparison is the other tab's, since it is a working
+ * selection rather than something anyone spent an evening on.
+ */
+export function mergeConcurrent(current: State, incoming: State): State {
+  const byId = new Map(incoming.trips.map(trip => [trip.id, trip]));
+  for (const trip of current.trips) {
+    const other = byId.get(trip.id);
+    if (!other || new Date(trip.updatedAt).getTime() >= new Date(other.updatedAt).getTime()) {
+      byId.set(trip.id, trip);
+    }
+  }
+  return {
+    saved: [...new Set([...current.saved, ...incoming.saved])],
+    compare: incoming.compare,
+    trips: [...byId.values()].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+  };
 }

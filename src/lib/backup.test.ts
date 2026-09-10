@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { rides } from '../data/rides';
 import { createTrip } from './planning';
 import { EMPTY } from './persistence';
-import { BACKUP_FORMAT, backupFilename, createBackup, describeRestore, describeStored, mergeState, readBackup } from './backup';
+import { BACKUP_FORMAT, backupFilename, createBackup, describeRestore, describeStored, mergeConcurrent, mergeState, readBackup } from './backup';
 import type { State } from './store-context';
 
 const ride = rides[0];
@@ -94,10 +94,42 @@ describe('describing a restore', () => {
 
 describe('describing what is stored', () => {
   it('counts only what is there, in words', () => {
-    expect(describeStored({ trips: 0, saved: 0, compare: 0 })).toBe('nothing');
+    expect(describeStored({ trips: 0, saved: 0, compare: 0 })).toBe('');
     expect(describeStored({ trips: 1, saved: 0, compare: 0 })).toBe('1 trip');
     expect(describeStored({ trips: 0, saved: 0, compare: 2 })).toBe('2 rides set aside to compare');
     expect(describeStored({ trips: 2, saved: 1, compare: 3 }))
       .toBe('2 trips, 1 saved ride and 3 rides set aside to compare');
+  });
+});
+
+describe('reconciling with another tab mid-edit', () => {
+  const older = at({ ...createTrip(ride), name: 'Older' }, '2027-01-01T00:00:00.000Z');
+  const newer = { ...older, name: 'Newer', updatedAt: '2027-06-01T00:00:00.000Z' };
+
+  it('keeps the copy edited most recently, whichever side it is on', () => {
+    expect(mergeConcurrent(state({ trips: [newer] }), state({ trips: [older] })).trips[0].name).toBe('Newer');
+    expect(mergeConcurrent(state({ trips: [older] }), state({ trips: [newer] })).trips[0].name).toBe('Newer');
+  });
+
+  it('keeps a trip only one side knows about, rather than losing unwritten work', () => {
+    const mine = createTrip(ride);
+    const theirs = createTrip(ride);
+    const merged = mergeConcurrent(state({ trips: [mine] }), state({ trips: [theirs] }));
+    expect(merged.trips.map(trip => trip.id).sort()).toEqual([mine.id, theirs.id].sort());
+  });
+
+  it('unions saved rides and takes the other tab\'s comparison', () => {
+    const merged = mergeConcurrent(
+      state({ saved: [rides[0].id], compare: [rides[0].id] }),
+      state({ saved: [rides[1].id], compare: [rides[2].id] }),
+    );
+    expect(merged.saved).toEqual([rides[0].id, rides[1].id]);
+    expect(merged.compare).toEqual([rides[2].id]);
+  });
+
+  it('orders the result with the most recently edited first', () => {
+    const merged = mergeConcurrent(state({ trips: [older] }), state({ trips: [createTrip(ride)] }));
+    expect(new Date(merged.trips[0].updatedAt).getTime())
+      .toBeGreaterThanOrEqual(new Date(merged.trips[1].updatedAt).getTime());
   });
 });

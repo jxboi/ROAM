@@ -27,19 +27,28 @@ const DOCUMENT = '/index.html';
 /** Files that must come from the network, never the app shell. */
 const PASS_THROUGH = /^\/(robots\.txt|sitemap\.xml)$/;
 
+/**
+ * A response marked as redirected cannot be returned for a navigation, and
+ * hosts redirect for all sorts of tidiness — a trailing slash, a www prefix, a
+ * prettier URL. Hand back a plain copy instead.
+ */
+function withoutRedirect(response: Response): Response {
+  return response.redirected ? new Response(response.body, response) : response;
+}
+
 async function precache(): Promise<void> {
-  const cache = await caches.open(SHELL_CACHE);
-  await Promise.all([...SHELL_URLS].map(async url => {
-    // Bypass the HTTP cache while installing. index.html is served with
-    // must-revalidate, and precaching a copy of the previous build's document
-    // would point every navigation at assets this build no longer has.
+  // Bypass the HTTP cache while installing. index.html is served with
+  // must-revalidate, and precaching a copy of the previous build's document
+  // would point every navigation at assets this build no longer has.
+  const downloaded = await Promise.all([...SHELL_URLS].map(async url => {
     const response = await fetch(new Request(url, { cache: 'reload' }));
     if (!response.ok) throw new Error(`ROAM: cannot precache ${url} (${response.status})`);
-    // A host that redirects to a tidier URL hands back a response marked as
-    // redirected, and returning one of those for a navigation is a hard error.
-    // Store a plain copy instead.
-    await cache.put(url, response.redirected ? new Response(response.body, response) : response);
+    return [url, withoutRedirect(response)] as const;
   }));
+  // Nothing is written until every file is in hand, so a failed install cannot
+  // leave a half-populated cache behind under this build's own name.
+  const cache = await caches.open(SHELL_CACHE);
+  await Promise.all(downloaded.map(([url, response]) => cache.put(url, response)));
 }
 
 self.addEventListener('install', event => {
@@ -76,8 +85,15 @@ async function imageResponse(request: Request): Promise<{ response: Response; re
   const network = fetch(request)
     .then(async response => {
       if (response.ok && response.type === 'basic') {
-        await cache.put(request, response.clone());
-        await trim(cache);
+        try {
+          await cache.put(request, response.clone());
+          // Only a new entry can push the cache over its limit; refreshing one
+          // that is already there does not need the whole cache enumerated.
+          if (!cached) await trim(cache);
+        } catch {
+          // A full cache is a reason to skip storing it, not to withhold a
+          // photo that downloaded perfectly well.
+        }
       }
       return response;
     })
@@ -106,7 +122,7 @@ self.addEventListener('fetch', event => {
       const cached = await caches.match(DOCUMENT, { cacheName: SHELL_CACHE });
       if (cached) return cached;
       try {
-        return await fetch(request);
+        return withoutRedirect(await fetch(request));
       } catch {
         return new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
       }

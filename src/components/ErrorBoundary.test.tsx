@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -45,10 +45,18 @@ describe('error boundary', () => {
 
 describe('recovering from a chunk that will not load', () => {
   const reload = vi.fn();
+// jsdom defines the useful members on Location.prototype, so spreading copies
+// nothing; the descriptor has to be put back or the rest of the file inherits
+// a Location with only reload on it.
+const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')!;
+afterEach(() => Object.defineProperty(window, 'location', originalLocation));
 
   beforeEach(() => {
     reload.mockClear();
-    Object.defineProperty(window, 'location', { value: { ...window.location, reload }, configurable: true, writable: true });
+    Object.defineProperty(window, 'location', {
+      value: Object.assign(Object.create(Object.getPrototypeOf(window.location)), { reload, href: window.location.href, pathname: window.location.pathname, origin: window.location.origin }),
+      configurable: true,
+    });
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 

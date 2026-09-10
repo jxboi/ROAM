@@ -1,11 +1,17 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SOCIAL_IMAGE, absoluteUrl } from './site';
 
 export type PageMeta = {
   /** Page-specific part of the title; omit on the home page. */
   title?: string;
   description?: string;
-  path?: string;
+  /**
+   * The route this page belongs to. Required, and taken from the router rather
+   * than the address bar: history moves before React commits, so reading
+   * location during a transition gives the URL of the page being arrived at
+   * while the page being left is still on screen.
+   */
+  path: string;
   image?: string;
   type?: 'website' | 'article';
   /** Personal pages hold no shareable content and should stay out of search results. */
@@ -69,7 +75,7 @@ function upsertLink(rel: string, href: string) {
 export function useDocumentMeta({ title, description, path, image, type = 'website', noIndex = false }: PageMeta) {
   const resolvedTitle = pageTitle(title);
   const resolvedDescription = description ?? SITE_DESCRIPTION;
-  const resolvedPath = path ?? (typeof window === 'undefined' ? '/' : window.location.pathname);
+  const resolvedPath = path;
   const resolvedImage = image ?? SOCIAL_IMAGE;
 
   useEffect(() => {
@@ -95,7 +101,9 @@ export function useDocumentMeta({ title, description, path, image, type = 'websi
 
 /** Publishes one structured-data block for the current page, replacing any previous one. */
 export function useJsonLd(data: object | null) {
-  const serialized = data ? JSON.stringify(data) : '';
+  // Serialising is the expensive half, so it happens per value rather than per
+  // render; pass a stable object from the call site.
+  const serialized = useMemo(() => (data ? JSON.stringify(data) : ''), [data]);
   useEffect(() => {
     if (!serialized) return;
     const script = document.createElement('script');

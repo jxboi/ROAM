@@ -11,6 +11,10 @@ class ErrorSink extends Component<{ children: ReactNode; onError: (error: Error)
 }
 
 const reload = vi.fn();
+// jsdom defines the useful members on Location.prototype, so spreading copies
+// nothing; the descriptor has to be put back or the rest of the file inherits
+// a Location with only reload on it.
+const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')!;
 
 function Page() {
   return <p>Route content</p>;
@@ -22,11 +26,17 @@ const renderRoute = (Route: ReturnType<typeof lazyRoute>) =>
 beforeEach(() => {
   sessionStorage.clear();
   reload.mockClear();
-  Object.defineProperty(window, 'location', { value: { ...window.location, reload }, configurable: true, writable: true });
+    Object.defineProperty(window, 'location', {
+      value: Object.assign(Object.create(Object.getPrototypeOf(window.location)), { reload, href: window.location.href, pathname: window.location.pathname, origin: window.location.origin }),
+      configurable: true,
+    });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  Object.defineProperty(window, 'location', originalLocation);
+});
 
 describe('lazily loaded routes', () => {
   it('renders the named export once the chunk arrives', async () => {

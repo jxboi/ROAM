@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { isChunkLoadError } from '../lib/lazy-route';
+import { canReloadForChunk, markChunkReload } from '../lib/lazy-route';
 
 type Props = { children: ReactNode; /** Changing this value clears the error, e.g. on navigation. */ resetKey?: string };
 type ErrorState = { error: Error | null };
@@ -31,7 +31,10 @@ export class ErrorBoundary extends Component<Props, ErrorState> {
    * Only a fresh load can recover that one.
    */
   private retry() {
-    if (isChunkLoadError(this.state.error)) {
+    // A reload is the only thing that recovers a failed chunk, but not while
+    // offline and not twice — both would leave the visitor worse off than this
+    // message does.
+    if (canReloadForChunk(this.state.error) && markChunkReload()) {
       window.location.reload();
       return;
     }
