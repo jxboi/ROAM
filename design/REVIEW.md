@@ -1,5 +1,10 @@
 # Implementation review
 
+> The original design review, written when the app was first built, and kept as
+> a record of how the implementation relates to the concept. It describes the
+> state at that point: the verification described below has since been replaced
+> by the automated suites, which the README documents.
+
 ## Design references and visual inspection
 
 - `discovery-concept.png`: original desktop concept, 1374 × 1145.

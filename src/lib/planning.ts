@@ -57,13 +57,20 @@ export function formatDate(date:string,short=false) {
   if(!Number.isFinite(parsed.getTime()))return 'Dates to decide';
   return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:short?'short':'long',...(short?{}:{year:'numeric'}),timeZone:'UTC'}).format(parsed);
 }
+/** Renders a YYYY-MM reference-check stamp as a month a reader recognises. */
+export function formatMonth(value:string) {
+  if(!/^\d{4}-\d{2}$/.test(value))return '';
+  const parsed=new Date(`${value}-01T12:00:00Z`);
+  if(!Number.isFinite(parsed.getTime()))return '';
+  return new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(parsed);
+}
 export function downloadFile(name:string,content:string,type='text/plain') {
   const url=URL.createObjectURL(new Blob([content],{type}));
   const link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 export function planMarkdown(trip:Trip,ride:Ride) {
   const budget=tripBudget(trip);
-  return `# ${trip.name}\n\n${ride.country} · ${trip.days.length} days · ${trip.days.reduce((sum,d)=>sum+d.km,0)} km approx.\n${trip.startDate ? `${formatDate(trip.startDate)} – ${formatDate(addDays(trip.startDate,trip.days.length-1))}` : 'Dates to decide'}\n${trip.riders} rider(s) · ${trip.ownBike?'Own motorcycle':'Rental motorcycle'}\n\n## Itinerary\n\n${trip.days.map((day,i)=>`### Day ${i+1}${trip.startDate?` · ${formatDate(addDays(trip.startDate,i),true)}`:''}: ${day.title}\n${day.km} km approx. · Overnight: ${day.stay}\n${day.description}${day.notes?`\nNotes: ${day.notes}`:''}`).join('\n\n')}\n\n## Estimated budget (USD, all riders)\n\n${Object.entries(budget.parts).map(([key,value])=>`${key}: ${money(value)}`).join('\n')}\n10% buffer: ${money(budget.buffer)}\nTotal estimate: ${money(budget.total)}\nAccommodation assumes ${budget.nights} nights and a separate room per rider. Flights, visas, insurance, deposits and one-way fees are excluded. These are editable planning estimates, not live quotes.\n\n## Preparation\n\n${CHECKLIST.map(item=>`- [${trip.checklist.includes(item.id)?'x':' '}] ${item.title}`).join('\n')}\n\n## Notes\n\n${trip.notes||'No notes yet.'}\n\n## Route reference\n\n${ride.source.name}: ${ride.source.url}\n\nROAM sample itinerary. Distances and daily routes are approximate planning suggestions, not verified navigation. Check current local access, conditions, documents and provider terms before travel.\n`;
+  return `# ${trip.name}\n\n${ride.country} · ${trip.days.length} days · ${trip.days.reduce((sum,d)=>sum+d.km,0)} km approx.\n${trip.startDate ? `${formatDate(trip.startDate)} – ${formatDate(addDays(trip.startDate,trip.days.length-1))}` : 'Dates to decide'}\n${trip.riders} rider(s) · ${trip.ownBike?'Own motorcycle':'Rental motorcycle'}\n\n## Itinerary\n\n${trip.days.map((day,i)=>`### Day ${i+1}${trip.startDate?` · ${formatDate(addDays(trip.startDate,i),true)}`:''}: ${day.title}\n${day.km} km approx. · Overnight: ${day.stay}\n${day.description}${day.notes?`\nNotes: ${day.notes}`:''}`).join('\n\n')}\n\n## Estimated budget (USD, all riders)\n\n${Object.entries(budget.parts).map(([key,value])=>`${key}: ${money(value)}`).join('\n')}\n10% buffer: ${money(budget.buffer)}\nTotal estimate: ${money(budget.total)}\nAccommodation assumes ${budget.nights} nights and a separate room per rider. Flights, visas, insurance, deposits and one-way fees are excluded. These are editable planning estimates, not live quotes.\n\n## Preparation\n\n${CHECKLIST.map(item=>`- [${trip.checklist.includes(item.id)?'x':' '}] ${item.title}`).join('\n')}\n\n## Notes\n\n${trip.notes||'No notes yet.'}\n\n## Route reference\n\n${ride.source.name}: ${ride.source.url}${ride.source.checked?` (reference checked ${formatMonth(ride.source.checked)})`:''}\n\nROAM sample itinerary. Distances and daily routes are approximate planning suggestions, not verified navigation. Check current local access, conditions, documents and provider terms before travel.\n`;
 }
 function icsEscape(value:unknown){return String(value??'').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');}
 /** An unparseable stored timestamp must not take the whole export down. */

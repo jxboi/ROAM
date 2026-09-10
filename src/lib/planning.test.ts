@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rides, dailyCost } from '../data/rides';
-import { addDays, createTrip, defaultFilters, filterRides, planCalendar, planMarkdown, tripBudget } from './planning';
+import { addDays, createTrip, defaultFilters, filterRides, formatMonth, planCalendar, planMarkdown, tripBudget } from './planning';
 
 describe('ride discovery',()=>{
  it('combines destination, season, difficulty and budget rather than ignoring constraints',()=>{
@@ -75,6 +75,18 @@ describe('editorial data integrity',()=>{
  it('has internally consistent day counts, distances and valid season values',()=>{
   expect(new Set(rides.map(r=>r.id)).size).toBe(rides.length);
   expect(new Set(rides.map(r=>r.region)).size).toBe(6);
-  for(const ride of rides){expect(ride.days,ride.id).toBe(ride.itinerary.length);expect(ride.distance,ride.id).toBe(ride.itinerary.reduce((sum,d)=>sum+d.km,0));expect(ride.months.every(m=>Number.isInteger(m)&&m>=1&&m<=12)).toBe(true);expect(ride.source.url).toMatch(/^https:\/\//);}
+  for(const ride of rides){expect(ride.days,ride.id).toBe(ride.itinerary.length);expect(ride.distance,ride.id).toBe(ride.itinerary.reduce((sum,d)=>sum+d.km,0));expect(ride.months.every(m=>Number.isInteger(m)&&m>=1&&m<=12)).toBe(true);expect(ride.source.url).toMatch(/^https:\/\//);expect(ride.source.checked,ride.id).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);expect(formatMonth(ride.source.checked),ride.id).not.toBe('');}
+ });
+});
+
+describe('reference dates',()=>{
+ it('renders the month a destination reference was last checked',()=>{
+  expect(formatMonth('2026-09')).toBe('September 2026');
+  expect(formatMonth('2027-01')).toBe('January 2027');
+ });
+ it('says nothing rather than something wrong when the stamp is unusable',()=>{
+  expect(formatMonth('')).toBe('');
+  expect(formatMonth('September 2026')).toBe('');
+  expect(formatMonth('2026-13')).toBe('');
  });
 });
