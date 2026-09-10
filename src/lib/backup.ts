@@ -109,7 +109,9 @@ export function describeStored({ trips, saved, compare }: { trips: number; saved
   if (trips) parts.push(`${trips} trip${trips === 1 ? '' : 's'}`);
   if (saved) parts.push(`${saved} saved ride${saved === 1 ? '' : 's'}`);
   if (compare) parts.push(`${compare} ride${compare === 1 ? '' : 's'} set aside to compare`);
-  return sentence(parts);
+  // The caller only renders this when there is something to remove, but an
+  // empty list still has to read as a sentence rather than a gap.
+  return parts.length ? sentence(parts) : 'nothing';
 }
 
 /**
@@ -120,8 +122,8 @@ export function describeStored({ trips, saved, compare }: { trips: number; saved
  * cannot both be right about a trip that only one of them has. This keeps
  * both, which means a trip deleted in the other tab reappears — the rarer and
  * more visible mistake — rather than discarding notes being typed here, which
- * would be silent. The comparison is the other tab's, since it is a working
- * selection rather than something anyone spent an evening on.
+ * would be silent. The comparison stays this tab's: emptying the tray someone
+ * is looking at is worse than missing a selection made elsewhere.
  */
 export function mergeConcurrent(current: State, incoming: State): State {
   const byId = new Map(incoming.trips.map(trip => [trip.id, trip]));
@@ -133,7 +135,7 @@ export function mergeConcurrent(current: State, incoming: State): State {
   }
   return {
     saved: [...new Set([...current.saved, ...incoming.saved])],
-    compare: incoming.compare,
+    compare: current.compare,
     trips: [...byId.values()].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
   };
 }

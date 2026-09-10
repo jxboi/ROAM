@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { canReloadForChunk, markChunkReload } from '../lib/lazy-route';
+import { canReloadForChunk, isChunkLoadError, markChunkReload } from '../lib/lazy-route';
 
 type Props = { children: ReactNode; /** Changing this value clears the error, e.g. on navigation. */ resetKey?: string };
 type ErrorState = { error: Error | null };
@@ -30,10 +30,12 @@ export class ErrorBoundary extends Component<Props, ErrorState> {
    * re-rendering a route whose chunk failed just re-throws the same error.
    * Only a fresh load can recover that one.
    */
+  /** A failed chunk can only be recovered by a fresh load, and only once. */
+  private canRetry(): boolean {
+    return !isChunkLoadError(this.state.error) || canReloadForChunk(this.state.error);
+  }
+
   private retry() {
-    // A reload is the only thing that recovers a failed chunk, but not while
-    // offline and not twice — both would leave the visitor worse off than this
-    // message does.
     if (canReloadForChunk(this.state.error) && markChunkReload()) {
       window.location.reload();
       return;
@@ -50,8 +52,10 @@ export class ErrorBoundary extends Component<Props, ErrorState> {
           <h2>That road just closed on us.</h2>
           <p>Something went wrong on this page. Your saved rides and trips are still stored in this browser.</p>
           <div className="error-actions">
-            <button className="button primary" onClick={() => this.retry()}>Try this page again</button>
-            <a className="button secondary" href="/">Back to the rides</a>
+            {this.canRetry() && (
+              <button className="button primary" onClick={() => this.retry()}>Try this page again</button>
+            )}
+            <a className={`button ${this.canRetry() ? 'secondary' : 'primary'}`} href="/">Back to the rides</a>
           </div>
         </div>
       </div>

@@ -157,6 +157,28 @@ describe('store', () => {
       window.dispatchEvent(new StorageEvent('storage', { key: null, newValue: null }));
     });
     await waitFor(() => expect(screen.getByTestId('trips')).toBeEmptyDOMElement());
+    // And the key stays gone: nothing re-creates it on the next debounce.
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it('does not treat state adopted from another tab as an edit of its own', async () => {
+    setup();
+    const withRide = JSON.stringify({ saved: [first.id], compare: [], trips: [] });
+    act(() => {
+      localStorage.setItem(KEY, withRide);
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: withRide }));
+    });
+    await waitFor(() => expect(saved()).toBe(first.id));
+
+    // The other tab changes its mind. Nothing was edited here, so the removal
+    // must arrive rather than being merged away.
+    const withoutRide = JSON.stringify({ saved: [], compare: [], trips: [] });
+    act(() => {
+      localStorage.setItem(KEY, withoutRide);
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: withoutRide }));
+    });
+    await waitFor(() => expect(saved()).toBe(''));
   });
 
   it('adopts a change made in another tab', async () => {

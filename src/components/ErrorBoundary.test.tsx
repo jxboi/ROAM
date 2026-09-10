@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from './ErrorBoundary';
+import { stubLocationReload } from '../test/location';
 
 function Boom({ explode }: { explode: boolean }) {
   if (explode) throw new Error('route blew up');
@@ -43,20 +44,16 @@ describe('error boundary', () => {
   });
 });
 
+let locationStub: ReturnType<typeof stubLocationReload>;
+
 describe('recovering from a chunk that will not load', () => {
-  const reload = vi.fn();
-// jsdom defines the useful members on Location.prototype, so spreading copies
-// nothing; the descriptor has to be put back or the rest of the file inherits
-// a Location with only reload on it.
-const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')!;
-afterEach(() => Object.defineProperty(window, 'location', originalLocation));
+  afterEach(() => locationStub.restore());
 
   beforeEach(() => {
-    reload.mockClear();
-    Object.defineProperty(window, 'location', {
-      value: Object.assign(Object.create(Object.getPrototypeOf(window.location)), { reload, href: window.location.href, pathname: window.location.pathname, origin: window.location.origin }),
-      configurable: true,
-    });
+    // The reload budget is recorded in session storage; leaving it set would
+    // make the next assertion in this file fail for an unrelated reason.
+    sessionStorage.clear();
+    locationStub = stubLocationReload();
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -67,7 +64,7 @@ afterEach(() => Object.defineProperty(window, 'location', originalLocation));
   it('reloads instead of re-rendering, which React would answer with the same error', async () => {
     render(<ErrorBoundary><Missing /></ErrorBoundary>);
     await userEvent.click(screen.getByRole('button', { name: /try this page again/i }));
-    expect(reload).toHaveBeenCalledOnce();
+    expect(locationStub.reload).toHaveBeenCalledOnce();
   });
 
   it('still re-renders in place for an ordinary error', async () => {
@@ -79,7 +76,26 @@ afterEach(() => Object.defineProperty(window, 'location', originalLocation));
     render(<ErrorBoundary><Flaky /></ErrorBoundary>);
     broken = false;
     await userEvent.click(screen.getByRole('button', { name: /try this page again/i }));
-    expect(reload).not.toHaveBeenCalled();
+    expect(locationStub.reload).not.toHaveBeenCalled();
     expect(screen.getByText('The page rendered')).toBeInTheDocument();
+  });
+});
+
+describe('when a reload cannot help', () => {
+  afterEach(() => locationStub.restore());
+
+  beforeEach(() => {
+    sessionStorage.setItem('roam-chunk-reload', '1');
+    locationStub = stubLocationReload();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  it('stops offering a retry that would do nothing, and leads with the way out', () => {
+    function Missing(): never {
+      throw new Error('Failed to fetch dynamically imported module: /assets/Planner-abc.js');
+    }
+    render(<ErrorBoundary><Missing /></ErrorBoundary>);
+    expect(screen.queryByRole('button', { name: /try this page again/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to the rides/i })).toHaveClass('primary');
   });
 });

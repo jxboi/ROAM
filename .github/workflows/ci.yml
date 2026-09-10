@@ -7,9 +7,11 @@ on:
 
 # One group per event and branch. A newer commit makes an in-flight run
 # irrelevant, except on the default branch, where the result is worth keeping.
-# The two events are kept in separate groups deliberately: sharing one would
-# have them cancel each other on the same commit, and a cancelled run reads as
-# a failed required check.
+# The two events keep separate groups on purpose: sharing one would have them
+# cancel each other on the same commit, and a cancelled run reads as a failed
+# required check. A branch with an open pull request is therefore built twice —
+# once as pushed, once as it would land — which is the cost of having both a
+# green branch and a tested merge commit.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -24,9 +26,6 @@ jobs:
   verify:
     name: Types, lint, unit tests, build
     runs-on: ubuntu-latest
-    # A branch in this repository is already covered by its push event, so the
-    # pull_request event only runs for forks, which push events cannot see.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -59,9 +58,6 @@ jobs:
   e2e:
     name: End-to-end and accessibility
     runs-on: ubuntu-latest
-    # A branch in this repository is already covered by its push event, so the
-    # pull_request event only runs for forks, which push events cannot see.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5

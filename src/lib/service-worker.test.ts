@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useServiceWorker } from './service-worker';
+import { stubLocationReload } from '../test/location';
 
 class FakeWorker extends EventTarget {
   state: ServiceWorkerState = 'installing';
@@ -30,23 +31,15 @@ function fakeContainer(registration: FakeRegistration | Promise<never>, controll
   return container;
 }
 
-const reload = vi.fn();
-// jsdom defines the useful members on Location.prototype, so spreading copies
-// nothing; the descriptor has to be put back or the rest of the file inherits
-// a Location with only reload on it.
-const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')!;
+let locationStub: ReturnType<typeof stubLocationReload>;
 
 beforeEach(() => {
   vi.stubEnv('PROD', true);
-  reload.mockClear();
-    Object.defineProperty(window, 'location', {
-      value: Object.assign(Object.create(Object.getPrototypeOf(window.location)), { reload, href: window.location.href, pathname: window.location.pathname, origin: window.location.origin }),
-      configurable: true,
-    });
+  locationStub = stubLocationReload();
 });
 
 afterEach(() => {
-  Object.defineProperty(window, 'location', originalLocation);
+  locationStub.restore();
   vi.unstubAllEnvs();
   Reflect.deleteProperty(navigator, 'serviceWorker');
 });
@@ -105,17 +98,17 @@ describe('service worker registration', () => {
 
     act(() => result.current.applyUpdate());
     expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
-    expect(reload).not.toHaveBeenCalled();
+    expect(locationStub.reload).not.toHaveBeenCalled();
 
     container.dispatchEvent(new Event('controllerchange'));
-    expect(reload).toHaveBeenCalledOnce();
+    expect(locationStub.reload).toHaveBeenCalledOnce();
   });
 
   it('reloads directly when there is nothing waiting to activate', () => {
     fakeContainer(new FakeRegistration(), null);
     const { result } = renderHook(() => useServiceWorker());
     act(() => result.current.applyUpdate());
-    expect(reload).toHaveBeenCalledOnce();
+    expect(locationStub.reload).toHaveBeenCalledOnce();
   });
 
   it('treats a failed registration as a missing extra, not an error', async () => {

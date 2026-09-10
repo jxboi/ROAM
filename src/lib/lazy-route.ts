@@ -25,11 +25,6 @@ export function canReloadForChunk(error: unknown): boolean {
     && !alreadyRetried();
 }
 
-/** Records the attempt. False means it could not be recorded, so do not reload. */
-export function markChunkReload(): boolean {
-  return rememberRetry();
-}
-
 function alreadyRetried(): boolean {
   try {
     return sessionStorage.getItem(RELOAD_KEY) === '1';
@@ -38,9 +33,10 @@ function alreadyRetried(): boolean {
   }
 }
 
-/** Returns false when the attempt could not be recorded, in which case a reload
- *  could loop forever and is not worth risking. */
-function rememberRetry(): boolean {
+/** Records that this page has already reloaded for a chunk. Returns false when
+ *  the attempt could not be recorded, in which case a reload could loop for
+ *  ever and is not worth risking. */
+export function markChunkReload(): boolean {
   try {
     sessionStorage.setItem(RELOAD_KEY, '1');
     return true;

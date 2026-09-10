@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Component, Suspense, type ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { lazyRoute } from './lazy-route';
+import { stubLocationReload } from '../test/location';
 
 class ErrorSink extends Component<{ children: ReactNode; onError: (error: Error) => void }, { failed: boolean }> {
   override state = { failed: false };
@@ -10,11 +11,7 @@ class ErrorSink extends Component<{ children: ReactNode; onError: (error: Error)
   override render() { return this.state.failed ? <p>Failed</p> : this.props.children; }
 }
 
-const reload = vi.fn();
-// jsdom defines the useful members on Location.prototype, so spreading copies
-// nothing; the descriptor has to be put back or the rest of the file inherits
-// a Location with only reload on it.
-const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')!;
+let locationStub: ReturnType<typeof stubLocationReload>;
 
 function Page() {
   return <p>Route content</p>;
@@ -25,17 +22,13 @@ const renderRoute = (Route: ReturnType<typeof lazyRoute>) =>
 
 beforeEach(() => {
   sessionStorage.clear();
-  reload.mockClear();
-    Object.defineProperty(window, 'location', {
-      value: Object.assign(Object.create(Object.getPrototypeOf(window.location)), { reload, href: window.location.href, pathname: window.location.pathname, origin: window.location.origin }),
-      configurable: true,
-    });
+  locationStub = stubLocationReload();
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  Object.defineProperty(window, 'location', originalLocation);
+  locationStub.restore();
 });
 
 describe('lazily loaded routes', () => {
@@ -48,7 +41,7 @@ describe('lazily loaded routes', () => {
   it('reloads once when a chunk has gone, which is what a mid-session deploy looks like', async () => {
     const Route = lazyRoute(async () => { throw new Error('Failed to fetch dynamically imported module'); }, 'Page');
     renderRoute(Route);
-    await waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    await waitFor(() => expect(locationStub.reload).toHaveBeenCalledOnce());
     // The fallback stays up rather than flashing an error while the page reloads.
     expect(screen.getByText('Loading')).toBeInTheDocument();
     expect(sessionStorage.getItem('roam-chunk-reload')).toBe('1');
@@ -63,7 +56,7 @@ describe('lazily loaded routes', () => {
       </Suspense>,
     );
     await waitFor(() => expect(onError).toHaveBeenCalled());
-    expect(reload).not.toHaveBeenCalled();
+    expect(locationStub.reload).not.toHaveBeenCalled();
     expect(sessionStorage.getItem('roam-chunk-reload')).toBeNull();
   });
 
@@ -77,7 +70,7 @@ describe('lazily loaded routes', () => {
       </Suspense>,
     );
     await waitFor(() => expect(onError).toHaveBeenCalled());
-    expect(reload).not.toHaveBeenCalled();
+    expect(locationStub.reload).not.toHaveBeenCalled();
     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
   });
 
@@ -91,7 +84,7 @@ describe('lazily loaded routes', () => {
       </Suspense>,
     );
     await waitFor(() => expect(onError).toHaveBeenCalled());
-    expect(reload).not.toHaveBeenCalled();
+    expect(locationStub.reload).not.toHaveBeenCalled();
   });
 
   it('forgets a past retry after a chunk loads cleanly', async () => {

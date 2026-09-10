@@ -12,16 +12,21 @@ const SAVE_DELAY = 400;
 export function StoreProvider({ children }: { children: ReactNode }) {
   // One read at mount: useRef evaluates its argument on every render, and this
   // provider re-renders on every keystroke in the planner.
-  const [initial] = useState(() => { const raw = readStorage(KEY); return { raw, state: parseState(raw) }; });
+  const [initial] = useState(() => {
+    const loaded = parseState(readStorage(KEY));
+    // Record the loaded state, not the raw string it came from: an empty
+    // browser and an empty document mean the same thing, and treating them as
+    // different would make a tab that has changed nothing look unsaved — and
+    // would create a storage key for a visitor who never saved anything.
+    return { state: loaded, json: JSON.stringify(loaded) };
+  });
   const [state, setState] = useState<State>(initial.state);
   const [toast, setToast] = useState('');
   const [storageError, setStorageError] = useState(() => !isStorageAvailable());
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<State | null>(null);
-  /** True once something in this tab has changed and is not yet written out. */
-  const unsaved = useRef(false);
-  const lastWritten = useRef<string | null>(initial.raw);
+  const lastWritten = useRef<string | null>(initial.json);
   // Committed state, readable from event handlers without re-creating callbacks.
   const latest = useRef(state);
   useEffect(() => { latest.current = state; }, [state]);
@@ -39,24 +44,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     pending.current = null;
     if (!next) return;
     const json = JSON.stringify(next);
-    if (json === lastWritten.current) { unsaved.current = false; return; }
+    if (json === lastWritten.current) return;
     if (writeStorage(KEY, json)) {
       lastWritten.current = json;
-      unsaved.current = false;
       setStorageError(false);
     } else {
       setStorageError(true);
     }
   }, []);
 
+  /** Whether this tab holds something that is not in storage yet. */
+  const hasUnwrittenChanges = useCallback(
+    () => JSON.stringify(latest.current) !== lastWritten.current,
+    [],
+  );
+
   useEffect(() => {
     pending.current = state;
-    // The first run is the state this tab loaded, not a change to it.
-    if (state !== initial.state) unsaved.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(flush, SAVE_DELAY);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [state, flush, initial.state]);
+  }, [state, flush]);
 
   // A backgrounded or closing tab never gets its debounce timer back.
   useEffect(() => {
@@ -77,13 +85,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // the no-change guard, which would otherwise swallow it in a tab that has
     // not written anything yet.
     if (raw === null) {
-      lastWritten.current = null;
+      // Match what storage now holds, so the debounce that this setState
+      // re-arms has nothing to write and the key the visitor just cleared is
+      // not immediately re-created.
+      lastWritten.current = JSON.stringify(EMPTY);
       setState(EMPTY);
       return;
     }
     if (raw === lastWritten.current) return;
     const incoming = parseState(raw);
-    if (!unsaved.current) {
+    if (!hasUnwrittenChanges()) {
       lastWritten.current = raw;
       setState(incoming);
       return;
@@ -92,7 +103,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // tapped in another tab cannot revert the notes being typed in this one.
     // lastWritten stays put, so the result is written out on the next flush.
     setState(current => mergeConcurrent(current, incoming));
-  }), []);
+  }), [hasUnwrittenChanges]);
 
   const toggleSaved = useCallback((id: string) => {
     if (!rideById(id)) return;

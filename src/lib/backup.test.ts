@@ -94,7 +94,7 @@ describe('describing a restore', () => {
 
 describe('describing what is stored', () => {
   it('counts only what is there, in words', () => {
-    expect(describeStored({ trips: 0, saved: 0, compare: 0 })).toBe('');
+    expect(describeStored({ trips: 0, saved: 0, compare: 0 })).toBe('nothing');
     expect(describeStored({ trips: 1, saved: 0, compare: 0 })).toBe('1 trip');
     expect(describeStored({ trips: 0, saved: 0, compare: 2 })).toBe('2 rides set aside to compare');
     expect(describeStored({ trips: 2, saved: 1, compare: 3 }))
@@ -118,13 +118,13 @@ describe('reconciling with another tab mid-edit', () => {
     expect(merged.trips.map(trip => trip.id).sort()).toEqual([mine.id, theirs.id].sort());
   });
 
-  it('unions saved rides and takes the other tab\'s comparison', () => {
+  it('unions saved rides and keeps the comparison this tab is showing', () => {
     const merged = mergeConcurrent(
       state({ saved: [rides[0].id], compare: [rides[0].id] }),
       state({ saved: [rides[1].id], compare: [rides[2].id] }),
     );
     expect(merged.saved).toEqual([rides[0].id, rides[1].id]);
-    expect(merged.compare).toEqual([rides[2].id]);
+    expect(merged.compare).toEqual([rides[0].id]);
   });
 
   it('orders the result with the most recently edited first', () => {
