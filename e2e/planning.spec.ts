@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { planRide, shown, toast } from './helpers';
 
 test.describe('planning a trip', () => {
-  test('turns a ride into a plan that survives a reload', async ({ page }) => {
+  test('turns a ride into a plan that survives a reload', { tag: '@smoke' }, async ({ page }) => {
     await planRide(page, 'dolomites');
     await expect(page.getByRole('heading', { level: 1, name: 'My Dolomites ride' })).toBeVisible();
     await expect(page.locator('.autosave')).toContainText('Saved on this device');
@@ -18,7 +18,7 @@ test.describe('planning a trip', () => {
     await expect(page.locator('.planner-day').first()).toContainText('Day 1 · 10 Jul');
   });
 
-  test('prices the trip and reacts to bringing your own motorcycle', async ({ page }) => {
+  test('prices the trip and reacts to bringing your own motorcycle', { tag: '@smoke' }, async ({ page }) => {
     await planRide(page, 'dolomites');
     const total = page.locator('.budget-summary h2');
     await expect(total).toHaveText('$1,370');
@@ -64,7 +64,7 @@ test.describe('planning a trip', () => {
     await expect(page.locator('.budget-summary h2')).toHaveText('$1,370');
   });
 
-  test('keeps notes and the overnight stop per day', async ({ page }) => {
+  test('keeps notes and the overnight stop per day', { tag: '@smoke' }, async ({ page }) => {
     await planRide(page, 'dolomites');
     await page.getByLabel('Day 1 overnight stop').fill('Castelrotto');
     await page.getByLabel('Day 1 notes').fill('Collect the bike at 09:00.');
@@ -94,7 +94,7 @@ test.describe('planning a trip', () => {
     await expect(page).toHaveTitle(/A week of mountain mornings/);
   });
 
-  test('exports the plan as Markdown and the dates as a calendar', async ({ page }) => {
+  test('exports the plan as Markdown and the dates as a calendar', { tag: '@smoke' }, async ({ page }) => {
     await planRide(page, 'dolomites');
     await page.getByLabel('Trip start date').fill('2027-07-10');
     await shown(page.getByRole('button', { name: 'Export trip' })).click();

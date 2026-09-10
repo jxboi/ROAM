@@ -17,7 +17,7 @@ test.describe('offline', () => {
     expect(new URL(scope).pathname).toBe('/');
   });
 
-  test('opens the app with no network at all', async ({ page, context }) => {
+  test('opens the app with no network at all', { tag: '@smoke' }, async ({ page, context }) => {
     await installed(page);
     await context.setOffline(true);
     await page.reload();

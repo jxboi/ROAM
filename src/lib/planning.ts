@@ -66,7 +66,10 @@ export function formatMonth(value:string) {
 }
 export function downloadFile(name:string,content:string,type='text/plain') {
   const url=URL.createObjectURL(new Blob([content],{type}));
-  const link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const link=document.createElement('a');link.href=url;link.download=name;link.rel='noopener';document.body.append(link);link.click();
+  // Safari can cancel a download whose anchor is removed in the same tick, so
+  // the element and its object URL are both cleaned up afterwards.
+  setTimeout(()=>{link.remove();URL.revokeObjectURL(url);},1000);
 }
 export function planMarkdown(trip:Trip,ride:Ride) {
   const budget=tripBudget(trip);

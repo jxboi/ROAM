@@ -5,13 +5,13 @@ const meta = (name: string) => `meta[name="${name}"]`;
 const og = (property: string) => `meta[property="${property}"]`;
 
 test.describe('routing and metadata', () => {
-  test('serves a deep link directly from the server', async ({ page }) => {
+  test('serves a deep link directly from the server', { tag: '@smoke' }, async ({ page }) => {
     const response = await page.goto('/ride/lofoten');
     expect(response?.status()).toBe(200);
     await expect(page.getByRole('heading', { level: 1, name: /Lofoten/ })).toBeVisible();
   });
 
-  test('describes each route for search engines and link previews', async ({ page }) => {
+  test('describes each route for search engines and link previews', { tag: '@smoke' }, async ({ page }) => {
     await page.goto('/ride/dolomites');
     await expect(page).toHaveTitle('The Dolomites · ROAM');
     await expect(page.locator(og('og:title'))).toHaveAttribute('content', 'The Dolomites · ROAM');
@@ -90,7 +90,7 @@ test.describe('routing and metadata', () => {
     expect(headers['content-security-policy']).toContain("script-src 'self'");
   });
 
-  test('loads every page without a console error or a failed request', async ({ page }) => {
+  test('loads every page without a console error or a failed request', { tag: '@smoke' }, async ({ page }) => {
     const problems: string[] = [];
     page.on('console', message => { if (message.type() === 'error') problems.push(`console: ${message.text()}`); });
     page.on('pageerror', error => problems.push(`page: ${error.message}`));

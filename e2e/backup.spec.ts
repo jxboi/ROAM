@@ -7,7 +7,7 @@ const openProfile = async (page: import('@playwright/test').Page) => {
 };
 
 test.describe('backup and restore', () => {
-  test('carries a trip to a browser that has never seen it', async ({ page, browser, baseURL }) => {
+  test('carries a trip to a browser that has never seen it', { tag: '@smoke' }, async ({ page, browser, baseURL }) => {
     await planRide(page, 'dolomites');
     await page.getByRole('button', { name: 'Rename trip' }).click();
     await page.getByLabel('Trip name').fill('Backed-up ride');

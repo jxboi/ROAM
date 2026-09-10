@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { browseAllRides, navLink, rideCard, shown, toast } from './helpers';
 
 test.describe('saving and comparing', () => {
-  test('saves a ride and keeps it across a reload', async ({ page }) => {
+  test('saves a ride and keeps it across a reload', { tag: '@smoke' }, async ({ page }) => {
     await browseAllRides(page);
     const card = rideCard(page, 'The Dolomites');
     await card.getByRole('button', { name: 'Save The Dolomites' }).click();
@@ -27,7 +27,7 @@ test.describe('saving and comparing', () => {
     await expect(page.getByRole('heading', { name: /Some roads stay with you/ })).toBeVisible();
   });
 
-  test('compares three rides and refuses a fourth', async ({ page }) => {
+  test('compares three rides and refuses a fourth', { tag: '@smoke' }, async ({ page }) => {
     await browseAllRides(page);
     await shown(page.getByRole('button', { name: 'Compare rides' })).click();
     const picks = page.getByRole('button', { name: 'Compare', exact: true });

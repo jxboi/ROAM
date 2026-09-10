@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { rides, dailyCost } from '../data/rides';
-import { addDays, createTrip, defaultFilters, filterRides, formatMonth, planCalendar, planMarkdown, tripBudget } from './planning';
+import { addDays, createTrip, defaultFilters, downloadFile, filterRides, formatMonth, planCalendar, planMarkdown, tripBudget } from './planning';
 
 describe('ride discovery',()=>{
  it('combines destination, season, difficulty and budget rather than ignoring constraints',()=>{
@@ -88,5 +88,28 @@ describe('reference dates',()=>{
   expect(formatMonth('')).toBe('');
   expect(formatMonth('September 2026')).toBe('');
   expect(formatMonth('2026-13')).toBe('');
+ });
+});
+
+describe('handing a file to the browser',()=>{
+ it('cleans up the link and its object URL only after the download has started',async()=>{
+  const created=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:test');
+  const revoked=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+  const clicked=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+  vi.useFakeTimers();
+  try{
+   downloadFile('plan.md','# Plan','text/markdown');
+   expect(created).toHaveBeenCalledOnce();
+   expect(clicked).toHaveBeenCalledOnce();
+   const link=document.querySelector<HTMLAnchorElement>('a[download="plan.md"]');
+   expect(link,'the anchor must outlive the click').not.toBeNull();
+   expect(revoked).not.toHaveBeenCalled();
+   vi.advanceTimersByTime(1500);
+   expect(document.querySelector('a[download="plan.md"]')).toBeNull();
+   expect(revoked).toHaveBeenCalledWith('blob:test');
+  }finally{
+   vi.useRealTimers();
+   vi.restoreAllMocks();
+  }
  });
 });

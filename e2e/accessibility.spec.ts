@@ -5,7 +5,7 @@ import { browseAllRides, planRide, shown } from './helpers';
 async function expectNoViolations(page: Page) {
   // Contrast is measured from computed styles, so a dialog caught mid fade-in
   // reports false failures. Let any running animation settle first.
-  await page.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));
+  await page.evaluate(() => Promise.all((document.getAnimations?.() ?? []).map(a => a.finished.catch(() => {}))));
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
     .analyze();
@@ -15,7 +15,7 @@ async function expectNoViolations(page: Page) {
 }
 
 test.describe('accessibility', () => {
-  test('discovery, with and without filters', async ({ page }) => {
+  test('discovery, with and without filters', { tag: '@smoke' }, async ({ page }) => {
     await page.goto('/');
     await expectNoViolations(page);
     await browseAllRides(page);
@@ -55,7 +55,7 @@ test.describe('accessibility', () => {
     await expectNoViolations(page);
   });
 
-  test('the planner, on each of its tabs', async ({ page }) => {
+  test('the planner, on each of its tabs', { tag: '@smoke' }, async ({ page }) => {
     await planRide(page, 'dolomites');
     for (const tab of ['Itinerary', 'Budget', 'Get ready']) {
       await page.getByRole('tab', { name: tab }).click();
@@ -114,6 +114,21 @@ test.describe('accessibility', () => {
       await page.getByRole('tab', { name: 'Get ready' }).click();
       await expectNoViolations(page);
     });
+  });
+
+  test('moves between tab sets with the arrow, Home and End keys', async ({ page }) => {
+    await page.goto('/ride/dolomites');
+    const overview = page.getByRole('tab', { name: 'Overview' });
+    await overview.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Itinerary' })).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('End');
+    await expect(page.getByRole('tab', { name: 'Good to know' })).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Home');
+    await expect(overview).toHaveAttribute('aria-selected', 'true');
+    // Wrapping backwards from the first tab lands on the last.
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('tab', { name: 'Good to know' })).toHaveAttribute('aria-selected', 'true');
   });
 
   test('reaches the main content with the keyboard alone', async ({ page }) => {

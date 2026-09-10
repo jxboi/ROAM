@@ -15,7 +15,10 @@ export default defineConfig({
   expect: { timeout: 7_000 },
   fullyParallel: true,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
+  retries: isCI ? 1 : 0,
+  // A broken engine should report quickly rather than retry its way through
+  // the whole suite.
+  maxFailures: isCI ? 15 : 0,
   workers: isCI ? 2 : undefined,
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
@@ -24,14 +27,17 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: isCI ? 'retain-on-failure' : 'off',
   },
-  // WebKit carries the most weight here: this is a mobile-first app, and iOS
-  // Safari is the engine its visitors are most likely to be holding.
+  // Chromium runs everything. The other engines run the journeys tagged
+  // @smoke, which is where an engine difference would actually show up —
+  // storage, downloads, dialogs, dates — without paying for the whole suite
+  // five times over. WebKit carries the most weight of the three: this is a
+  // mobile-first app, and iOS Safari is what its visitors are holding.
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], ...chromium } },
     { name: 'chromium-mobile', use: { ...devices['Pixel 7'], ...chromium } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-    { name: 'webkit-mobile', use: { ...devices['iPhone 14'] } },
+    { name: 'firefox', grep: /@smoke/, use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', grep: /@smoke/, use: { ...devices['Desktop Safari'] } },
+    { name: 'webkit-mobile', grep: /@smoke/, use: { ...devices['iPhone 14'] } },
   ],
   // The suite runs against the real build served with the production header
   // and rewrite rules, so a broken CSP or a 404 on a deep link fails here.

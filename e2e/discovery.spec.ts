@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { browseAllRides, goHome, rideCard, shown } from './helpers';
 
 test.describe('discovery', () => {
-  test('lands on the hero with a shortlist of rides', async ({ page }) => {
+  test('lands on the hero with a shortlist of rides', { tag: '@smoke' }, async ({ page }) => {
     await goHome(page);
     await expect(page.getByRole('heading', { name: /Life’s better/ })).toBeVisible();
     await expect(page).toHaveTitle('ROAM — Find your next great ride');
@@ -19,7 +19,7 @@ test.describe('discovery', () => {
     await expect(page).toHaveURL(/all=true/);
   });
 
-  test('searches by destination and keeps the filter in a shareable URL', async ({ page }) => {
+  test('searches by destination and keeps the filter in a shareable URL', { tag: '@smoke' }, async ({ page }) => {
     await goHome(page);
     await page.getByLabel('Destination or region').fill('Italy');
     await page.getByRole('button', { name: 'Find my ride' }).click();
