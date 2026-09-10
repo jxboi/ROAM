@@ -2,14 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
-# A newer push makes an in-flight run irrelevant.
+# Keyed on the branch rather than the event, so a push and the pull request it
+# belongs to share one run instead of doing the same work twice. A newer commit
+# makes an in-flight run irrelevant, except on the default branch, where the
+# result is worth keeping.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
