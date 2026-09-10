@@ -25,7 +25,7 @@ export function Discover(){
  const results=filterRides(rides,filters),visible=isBrowsing?results:results.slice(0,3);
  useEffect(()=>{setQuery(filters.query);setMonth(filters.month);setStyle(filters.style);},[filters.query,filters.month,filters.style]);
  function apply(update:Partial<Filters>,all=true){const next={...filters,...update};const search=new URLSearchParams();for(const [key,value]of Object.entries(next))if(value&&!(key==='sort'&&value==='recommended'))search.set(key,value);if(all)search.set('all','true');setParams(search,{preventScrollReset:true});}
- function scrollResults(){setTimeout(()=>resultsRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'}),50);}
+ function scrollResults(){setTimeout(()=>resultsRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}),50);}
  function search(event:FormEvent){event.preventDefault();apply({query:query.trim(),month,style});scrollResults();}
  function reset(){setParams(new URLSearchParams('all=true'),{preventScrollReset:true});setQuery('');setMonth('');setStyle('');}
  return <>

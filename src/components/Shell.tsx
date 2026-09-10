@@ -12,7 +12,7 @@ export function Shell(){
  const firstView=useRef(true);
  const [navigated,setNavigated]=useState(false);
  useEffect(()=>{
-  window.scrollTo({top:0,behavior:'instant'});
+  window.scrollTo(0,0);
   // The first page needs neither: the browser announces it and focus is already
   // at the top. Every later route change leaves focus behind in the header, and
   // is silent unless the live region says something.
