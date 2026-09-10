@@ -163,3 +163,23 @@ test.describe('images', () => {
     expect(rendered.endsWith(requested[0])).toBe(true);
   });
 });
+
+test.describe('printing', () => {
+  test('prints a plan as a document, not as an app', async ({ page }) => {
+    await page.goto('/ride/dolomites');
+    await page.getByRole('button', { name: 'Plan this ride' }).filter({ visible: true }).first().click();
+    await expect(page).toHaveURL(/\/trips\//);
+
+    await page.emulateMedia({ media: 'print' });
+    // Navigation, the export button and the toast have no meaning on paper.
+    await expect(page.locator('.site-header')).toBeHidden();
+    await expect(page.locator('.site-footer')).toBeHidden();
+    await expect(page.locator('.mobile-nav')).toBeHidden();
+    await expect(page.locator('.planner-tabs')).toBeHidden();
+    // The plan itself does.
+    await expect(page.getByRole('heading', { level: 1, name: 'My Dolomites ride' })).toBeVisible();
+    await expect(page.locator('.planner-days')).toBeVisible();
+    await expect(page.locator('.budget-summary')).toBeVisible();
+    await page.emulateMedia({ media: 'screen' });
+  });
+});

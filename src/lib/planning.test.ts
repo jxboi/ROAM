@@ -71,6 +71,8 @@ describe('calendar dates and exports',()=>{
   expect(calendar).toContain('Espresso\\, then fuel\\; bring cash\\nAsk about parking');
   expect(markdown).toContain('Flight arrives Monday.');expect(markdown).toContain('- [x] Check riding gear & repair kit');
   expect(markdown).toContain('10% buffer: $125');expect(markdown).toContain(rides[0].source.url);
+  // A shared plan can find its way back to the ride it came from.
+  expect(markdown).toContain(`/ride/${rides[0].id}`);
  });
 });
 describe('editorial data integrity',()=>{

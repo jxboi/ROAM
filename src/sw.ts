@@ -2,15 +2,15 @@
 // A deliberately small service worker. The build injects the list of shell
 // files below; everything else here is policy, kept readable on purpose
 // because a stale or over-eager cache is the classic way to break a deploy.
-type PrecacheEntry = { url: string; revision: string | null };
+type PrecacheEntry = { url: string; revision: string };
 /** Replaced at build time with the list of shell files and their revisions. */
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: PrecacheEntry[] };
 
-const manifest = self.__WB_MANIFEST ?? [];
+const manifest: PrecacheEntry[] = self.__WB_MANIFEST ?? [];
 
 /** FNV-1a over the injected manifest: a new build gets a new cache. */
 function fingerprint(entries: PrecacheEntry[]): string {
-  const source = entries.map(entry => `${entry.url}:${entry.revision ?? ''}`).join('|');
+  const source = entries.map(entry => `${entry.url}:${entry.revision}`).join('|');
   let hash = 0x811c9dc5;
   for (let i = 0; i < source.length; i++) {
     hash ^= source.charCodeAt(i);
@@ -104,4 +104,3 @@ self.addEventListener('fetch', event => {
   }
 });
 
-export {};

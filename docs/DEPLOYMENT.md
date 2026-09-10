@@ -99,8 +99,11 @@ about which files exist.
 
 ## The service worker
 
-`dist/sw.js` is generated at build time from `src/sw.ts` with the list of shell
-files injected. It precaches the shell (about 570 KB: HTML, JS, CSS, fonts and
+`dist/sw.js` is built from `src/sw.ts` as a second Rollup entry, with the list
+of shell files and their hashes substituted for its `__WB_MANIFEST` placeholder
+by a plugin in `vite.config.ts`. The caching policy is written out in
+`src/sw.ts` rather than generated, so there is no PWA toolchain in the
+dependency tree. It precaches the shell (about 570 KB: HTML, JS, CSS, fonts and
 icons) and caches destination photography as it is actually viewed, so a first
 visit does not download every image.
 

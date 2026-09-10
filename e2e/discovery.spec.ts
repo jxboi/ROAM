@@ -45,9 +45,9 @@ test.describe('discovery', () => {
     const before = await page.locator('article.ride-card').count();
     await page.getByRole('button', { name: 'Mountain passes' }).click();
     await expect(page).toHaveURL(/style=Mountain\+passes/);
-    const after = await page.locator('article.ride-card').count();
-    expect(after).toBeGreaterThan(0);
-    expect(after).toBeLessThan(before);
+    // The URL updates before the grid re-renders, so poll rather than race it.
+    await expect.poll(() => page.locator('article.ride-card').count()).toBeLessThan(before);
+    expect(await page.locator('article.ride-card').count()).toBeGreaterThan(0);
 
     await page.getByLabel('More filters').click();
     await page.getByRole('button', { name: 'Up to $200 / day' }).isVisible().catch(() => {});

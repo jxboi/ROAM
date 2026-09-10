@@ -55,7 +55,7 @@ Requires Node 22 (see `.nvmrc`).
 | `src/lib/planning.ts` | Filtering, budget maths, dates and the Markdown/ICS exports. |
 | `src/lib/persistence.ts` | Reads stored state back, repairing anything malformed. |
 | `src/lib/backup.ts` | The backup file format, and merging a restore into what is already here. |
-| `src/sw.ts` | The service worker: what is precached, what is cached as it is used, and how updates land. |
+| `src/sw.ts` | The service worker: what is precached, what is cached as it is used, and how updates land. Built as a second entry by a plugin in `vite.config.ts`. |
 | `src/lib/images.ts` | The responsive image candidate sets, and how wide each surface renders a photo. |
 | `src/lib/store.tsx` | The React store: saved rides, comparisons, trips, and persistence. |
 | `src/lib/meta.ts` | Per-route title, description, Open Graph tags and structured data. |

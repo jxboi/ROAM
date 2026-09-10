@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 import { rides } from './src/data/rides';
 
 /**
@@ -46,28 +48,96 @@ function seoFiles(siteUrl: string): Plugin {
   };
 }
 
+/** Files the worker precaches: the shell only. Destination photography is
+ *  cached as it is actually viewed, rather than making a first visit download
+ *  every image. */
+const SHELL_PATTERN = /\.(js|css|html|woff2)$/;
+const EXTRA_SHELL_FILES = ['favicon.svg', 'manifest.webmanifest'];
+const EXTRA_SHELL_FOLDERS = ['icons'];
+
+const revision = (contents: string | Uint8Array) =>
+  createHash('sha256').update(contents).digest('hex').slice(0, 16);
+
+function publicShellFiles(publicDir: string) {
+  const entries: { url: string; revision: string }[] = [];
+  const add = (relative: string) => {
+    const full = path.join(publicDir, relative);
+    if (!statSync(full).isFile()) return;
+    entries.push({ url: `/${relative.split(path.sep).join('/')}`, revision: revision(readFileSync(full)) });
+  };
+  for (const file of EXTRA_SHELL_FILES) add(file);
+  for (const folder of EXTRA_SHELL_FOLDERS) {
+    for (const file of readdirSync(path.join(publicDir, folder))) add(path.join(folder, file));
+  }
+  return entries;
+}
+
+/**
+ * Builds src/sw.ts as a second entry at a stable /sw.js, and replaces its
+ * __WB_MANIFEST placeholder with the real shell file list. This is the whole
+ * job a PWA plugin would do here — the caching policy is hand-written in
+ * src/sw.ts — so it is done inline rather than pulling in the toolchain.
+ */
+function serviceWorker(): Plugin {
+  let publicDir = '';
+  return {
+    name: 'roam:service-worker',
+    apply: 'build',
+    // Vite emits index.html during generateBundle, so this has to run after it
+    // or the document — the one file every navigation needs — is left out.
+    enforce: 'post',
+    config: () => ({
+      build: {
+        rollupOptions: {
+          input: { main: 'index.html', sw: 'src/sw.ts' },
+          output: {
+            // The worker's scope is its own path, so it cannot be hashed.
+            entryFileNames: (chunk: { name: string }) =>
+              chunk.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js',
+          },
+        },
+      },
+    }),
+    configResolved(resolved) { publicDir = resolved.publicDir; },
+    generateBundle(_options, bundle) {
+      const worker = bundle['sw.js'];
+      if (!worker || worker.type !== 'chunk') {
+        this.error('sw.js was not emitted; the service worker entry is misconfigured');
+        return;
+      }
+      const shell = Object.values(bundle)
+        .filter(output => output.fileName !== 'sw.js' && SHELL_PATTERN.test(output.fileName))
+        .map(output => ({
+          url: `/${output.fileName}`,
+          revision: revision(output.type === 'chunk' ? output.code : (output.source as string | Uint8Array)),
+        }));
+      const manifest = [...shell, ...publicShellFiles(publicDir)].sort((a, b) => a.url.localeCompare(b.url));
+      if (!manifest.some(entry => entry.url === '/index.html')) {
+        this.error('the precache manifest has no /index.html, so the app could not open offline');
+        return;
+      }
+      if (!worker.code.includes('self.__WB_MANIFEST')) {
+        this.error('src/sw.ts no longer references self.__WB_MANIFEST');
+        return;
+      }
+      worker.code = worker.code
+        .replace('self.__WB_MANIFEST', JSON.stringify(manifest))
+        // The substitution invalidates the offsets, so ship no map rather than
+        // a misleading one. The worker is a few kilobytes of readable code.
+        .replace(/\n?\/\/# sourceMappingURL=sw\.js\.map\s*$/, '\n');
+      delete bundle['sw.js.map'];
+      this.info(`service worker precaches ${manifest.length} shell files`);
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [
       react(),
       seoFiles(env.VITE_SITE_URL ?? ''),
-      VitePWA({
-        strategies: 'injectManifest',
-        srcDir: 'src',
-        filename: 'sw.ts',
-        // The app registers the worker itself, so the update prompt is ours.
-        injectRegister: false,
-        registerType: 'prompt',
-        // public/manifest.webmanifest is the source of truth.
-        manifest: false,
-        injectManifest: {
-          // The shell only: imagery is cached as it is actually looked at,
-          // rather than making a first visit download every destination.
-          globPatterns: ['**/*.{js,css,html,woff2}', 'favicon.svg', 'manifest.webmanifest', 'icons/*.png'],
-          globIgnores: ['**/*.map', 'social/**', 'images/**'],
-        },
-      }),
+      serviceWorker(),
     ],
     build: {
       target: 'es2022',

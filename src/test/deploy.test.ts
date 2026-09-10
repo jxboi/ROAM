@@ -49,6 +49,15 @@ describe('deployment configuration', () => {
     expect(fromNginx).toBe(fromHeaders?.replace('; upgrade-insecure-requests', ''));
   });
 
+  it('upgrades insecure requests on the hosts that terminate TLS', () => {
+    // The local production-parity server strips this, because it serves plain
+    // HTTP and engines differ on whether they exempt localhost from the
+    // upgrade. It must stay on the real deployments.
+    expect(headersFile).toContain('upgrade-insecure-requests');
+    expect(vercelHeaders.get('Content-Security-Policy')).toContain('upgrade-insecure-requests');
+    expect(read('scripts/serve-dist.mjs')).toContain('upgrade-insecure-requests');
+  });
+
   it('refuses inline and third-party scripts', () => {
     const csp = headersFile.match(/^\s*Content-Security-Policy:\s*(.+)$/m)?.[1] ?? '';
     expect(csp).toContain("script-src 'self'");

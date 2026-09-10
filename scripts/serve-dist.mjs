@@ -66,6 +66,14 @@ function headersFor(pathname) {
       : pattern === '/*' || pattern === pathname;
     if (matches) for (const [name, value] of rule.headers) merged.set(name, value);
   }
+  // This server speaks plain HTTP. upgrade-insecure-requests belongs on the
+  // HTTPS deployment, and engines differ on whether they exempt localhost from
+  // it: WebKit does not, so it would upgrade every script and stylesheet to a
+  // port that is not listening and render a blank page.
+  const policy = merged.get('Content-Security-Policy');
+  if (policy?.includes('upgrade-insecure-requests')) {
+    merged.set('Content-Security-Policy', policy.replace(/;?\s*upgrade-insecure-requests/, ''));
+  }
   return merged;
 }
 

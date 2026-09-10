@@ -26,21 +26,25 @@ export function useServiceWorker() {
     let registration: ServiceWorkerRegistration | undefined;
     const recheck = () => { if (document.visibilityState === 'visible') void registration?.update(); };
 
-    navigator.serviceWorker.register('/sw.js')
-      .then(active => {
-        if (cancelled) return;
-        registration = active;
-        markWaiting(active.waiting);
-        active.addEventListener('updatefound', () => {
-          const installing = active.installing;
-          installing?.addEventListener('statechange', () => {
-            if (installing.state === 'installed') markWaiting(installing);
+    // An unavailable worker is a missing enhancement, never a broken app. Some
+    // engines reject the promise; others throw from register() outright, and an
+    // error thrown here would reach the boundary and replace the whole app.
+    try {
+      navigator.serviceWorker.register('/sw.js')
+        .then(active => {
+          if (cancelled) return;
+          registration = active;
+          markWaiting(active.waiting);
+          active.addEventListener('updatefound', () => {
+            const installing = active.installing;
+            installing?.addEventListener('statechange', () => {
+              if (installing.state === 'installed') markWaiting(installing);
+            });
           });
-        });
-        document.addEventListener('visibilitychange', recheck);
-      })
-      // An unavailable worker is a missing enhancement, never a broken app.
-      .catch(() => {});
+          document.addEventListener('visibilitychange', recheck);
+        })
+        .catch(() => {});
+    } catch { /* no offline support here */ }
 
     return () => {
       cancelled = true;
