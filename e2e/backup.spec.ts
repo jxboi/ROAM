@@ -103,3 +103,38 @@ test.describe('removing stored rides and trips', () => {
     await expect(page.getByRole('heading', { name: /Some roads stay with you/ })).toBeVisible();
   });
 });
+
+test.describe('a browser that refuses to store anything', () => {
+  test('still runs, says so, and keeps the session usable', async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL });
+    // Private modes, lockdown settings and some in-app browsers make even
+    // reading the property throw, not just writing to it.
+    await context.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() { throw new DOMException('denied', 'SecurityError'); },
+      });
+    });
+    const page = await context.newPage();
+
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: /Life’s better/ })).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('couldn’t save these changes');
+
+    // Planning still works for as long as the tab is open, and the planner is
+    // honest about the fact that nothing is being written down.
+    await page.goto('/ride/dolomites');
+    await page.getByRole('button', { name: 'Plan this ride' }).filter({ visible: true }).first().click();
+    await expect(page).toHaveURL(/\/trips\/[0-9a-f-]{36}$/);
+    await expect(page.locator('.autosave')).toContainText('Not saved — export a copy');
+    await page.getByLabel('Trip start date').fill('2027-07-10');
+    await expect(page.locator('.budget-summary h2')).toHaveText('$1,370');
+
+    // And the way out is still open: the export is a file, not storage.
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export trip' }).filter({ visible: true }).first().click();
+    await page.getByRole('button', { name: /Download trip plan/ }).click();
+    expect((await download).suggestedFilename()).toBe('roam-dolomites-trip.md');
+    await context.close();
+  });
+});

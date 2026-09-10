@@ -153,3 +153,84 @@ test('lists trips with the most recently edited first', async ({ page }) => {
   await page.goto('/trips');
   await expect(page.locator('.trip-list-item').first()).toContainText('Dolomites');
 });
+
+test.describe('copying a plan', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'clipboard permissions are Chromium-only');
+
+  test('puts the whole plan on the clipboard', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await planRide(page, 'dolomites');
+    await shown(page.getByRole('button', { name: 'Export trip' })).click();
+    await page.getByRole('button', { name: /Copy the whole plan/ }).click();
+    await expect(toast(page)).toContainText('Trip plan copied');
+
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('My Dolomites ride');
+    expect(copied).toContain('## Itinerary');
+    expect(copied).toContain('Total estimate: $1,370');
+  });
+
+  test('says what to do instead when the clipboard is closed to it', async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL });
+    // What an insecure context or a denied permission looks like from here.
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        get: () => ({ writeText: () => Promise.reject(new Error('denied')) }),
+      });
+    });
+    const page = await context.newPage();
+    await planRide(page, 'dolomites');
+    await shown(page.getByRole('button', { name: 'Export trip' })).click();
+    await page.getByRole('button', { name: /Copy the whole plan/ }).click();
+    await expect(toast(page)).toContainText('Copy isn’t available here');
+    await context.close();
+  });
+
+  test('hands the link to the share sheet where there is one', async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL });
+    await context.addInitScript(() => {
+      const shared: unknown[] = [];
+      Object.defineProperty(window, '__shared', { get: () => shared });
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: (data: unknown) => { shared.push(data); return Promise.resolve(); },
+      });
+    });
+    const page = await context.newPage();
+    await page.goto('/ride/dolomites');
+    await shown(page.getByRole('button', { name: 'Share this ride' })).click();
+    const shared = await page.evaluate(() => (window as unknown as { __shared: { url: string; title: string }[] }).__shared);
+    expect(shared).toHaveLength(1);
+    expect(shared[0].url).toContain('/ride/dolomites');
+    expect(shared[0].title).toContain('The Dolomites');
+    // Nothing to say: the sheet already told the visitor what happened.
+    await page.waitForTimeout(300);
+    await expect(toast(page)).toHaveText('');
+    await context.close();
+  });
+
+  test('says nothing when the share sheet is dismissed', async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL });
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: () => Promise.reject(new DOMException('cancelled', 'AbortError')),
+      });
+    });
+    const page = await context.newPage();
+    await page.goto('/ride/dolomites');
+    await shown(page.getByRole('button', { name: 'Share this ride' })).click();
+    await page.waitForTimeout(300);
+    await expect(toast(page)).toHaveText('');
+    await context.close();
+  });
+
+  test('copies a ride link for sharing, and falls back gracefully', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/ride/dolomites');
+    await shown(page.getByRole('button', { name: 'Share this ride' })).click();
+    await expect(toast(page)).toContainText('Ride link copied');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('/ride/dolomites');
+  });
+});

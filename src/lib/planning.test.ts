@@ -153,6 +153,21 @@ describe('calendar file format',()=>{
   expect(calendar).not.toContain('\uFFFD');
   expect(calendar.replace(/\r\n /g,'')).toContain('köszönöm szépen a türelmet');
  });
+ it('moves the sequence on when the trip is edited, so a re-import updates',()=>{
+  const trip=createTrip(rides[0]);
+  trip.startDate='2027-06-15';
+  trip.updatedAt='2027-06-01T00:00:00.000Z';
+  const first=unfold(planCalendar(trip));
+  const later={...trip,updatedAt:'2027-06-02T00:00:00.000Z'};
+  const second=unfold(planCalendar(later));
+  const sequence=(ics:string)=>Number(ics.match(/SEQUENCE:(\d+)/)![1]);
+  expect(sequence(second)).toBeGreaterThan(sequence(first));
+  expect(first).toContain('LAST-MODIFIED:20270601T000000Z');
+  // The identity stays put, so a calendar updates the event rather than
+  // adding a second copy of the same day.
+  const uid=(ics:string)=>ics.match(/UID:(.+)/)![1];
+  expect(uid(second)).toBe(uid(first));
+ });
  it('names the calendar after the trip, so an import is recognisable',()=>{
   expect(build()).toContain('X-WR-CALNAME:A week of mountain mornings');
   expect(build()).toContain('NAME:A week of mountain mornings');

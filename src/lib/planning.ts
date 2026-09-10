@@ -101,9 +101,17 @@ function foldIcsLine(line:string) {
   if(current)parts.push(current);
   return parts.join('\r\n ');
 }
+/**
+ * Calendars only apply a re-import over an existing event when the sequence
+ * has moved on, so it tracks when the trip was last edited.
+ */
+function icsSequence(value:string){
+  const parsed=new Date(value).getTime();
+  return Math.max(0,Math.floor((Number.isFinite(parsed)?parsed:Date.now())/1000));
+}
 export function planCalendar(trip:Trip) {
   if(!trip.startDate)return '';
   const title=icsEscape(trip.name);
-  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ROAM//Trip Planner//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',`NAME:${title}`,`X-WR-CALNAME:${title}`,...trip.days.flatMap((day,i)=>['BEGIN:VEVENT',`UID:${trip.id}-${day.id}@roam.local`,`DTSTAMP:${icsStamp(trip.updatedAt)}`,`DTSTART;VALUE=DATE:${addDays(trip.startDate,i).replace(/-/g,'')}`,`DTEND;VALUE=DATE:${addDays(trip.startDate,i+1).replace(/-/g,'')}`,`SUMMARY:${icsEscape(`Day ${i+1}: ${day.title}`)}`,`DESCRIPTION:${icsEscape(`${day.description}\n${day.notes}\n${day.km} km approx.`)}`,`LOCATION:${icsEscape(day.stay)}`,'END:VEVENT']),'END:VCALENDAR'];
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ROAM//Trip Planner//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',`NAME:${title}`,`X-WR-CALNAME:${title}`,...trip.days.flatMap((day,i)=>['BEGIN:VEVENT',`UID:${trip.id}-${day.id}@roam.local`,`DTSTAMP:${icsStamp(trip.updatedAt)}`,`LAST-MODIFIED:${icsStamp(trip.updatedAt)}`,`SEQUENCE:${icsSequence(trip.updatedAt)}`,`DTSTART;VALUE=DATE:${addDays(trip.startDate,i).replace(/-/g,'')}`,`DTEND;VALUE=DATE:${addDays(trip.startDate,i+1).replace(/-/g,'')}`,`SUMMARY:${icsEscape(`Day ${i+1}: ${day.title}`)}`,`DESCRIPTION:${icsEscape(`${day.description}\n${day.notes}\n${day.km} km approx.`)}`,`LOCATION:${icsEscape(day.stay)}`,'END:VEVENT']),'END:VCALENDAR'];
   return lines.map(foldIcsLine).join('\r\n');
 }
