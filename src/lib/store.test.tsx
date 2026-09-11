@@ -162,11 +162,12 @@ describe('store', () => {
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 
-  it('self-heals a corrupted storage entry, overwriting it on the first flush', async () => {
+  it('self-heals genuinely unparseable storage, overwriting it on the first flush', async () => {
     localStorage.setItem(KEY, '{not valid json');
     setup();
-    // The corrupted string must not survive: the first debounced flush writes
-    // the repaired (empty) state over it, even though nothing was edited.
+    // Truncated or malformed bytes must not survive: the first debounced
+    // flush writes the repaired (empty) state over them, even though nothing
+    // was edited — leaving broken JSON in place serves no one.
     await waitFor(() => expect(localStorage.getItem(KEY)).toBe(JSON.stringify(stored())), { timeout: 2000 });
     expect(stored()).toEqual({ saved: [], compare: [], trips: [] });
   });
@@ -179,6 +180,41 @@ describe('store', () => {
     // if it did, this would still pass, but the point is nothing should race.
     await new Promise(resolve => setTimeout(resolve, 700));
     expect(localStorage.getItem(KEY)).toBe(clean);
+  });
+
+  it('leaves valid JSON that merely needed clamping on disk, rather than force-rewriting it', async () => {
+    // Well-formed JSON, but a saved id that no longer resolves to a real
+    // ride — the kind of thing normalizeState quietly drops in memory. That
+    // is not corruption, and must not be treated as if it were: rewriting it
+    // unprompted would both discard data a future fix might make sense of
+    // and, more immediately, make this tab look "dirty" to the cross-tab
+    // merge purely because its own snapshot needed massaging.
+    const needsClamping = JSON.stringify({ saved: [first.id, 'a-ride-that-no-longer-exists'], compare: [], trips: [] });
+    localStorage.setItem(KEY, needsClamping);
+    setup();
+    await waitFor(() => expect(saved()).toBe(first.id));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(localStorage.getItem(KEY)).toBe(needsClamping);
+  });
+
+  it('does not look dirty to the cross-tab merge just because its own load needed clamping', async () => {
+    // Same starting shape as above, but this time another tab writes before
+    // the first flush has a chance to run. A tab that (wrongly) considered
+    // itself dirty would merge the incoming write and union the saved lists,
+    // keeping the id it had already dropped in memory; adopting correctly
+    // replaces its list wholesale with the other tab's.
+    const needsClamping = JSON.stringify({ saved: [first.id, 'a-ride-that-no-longer-exists'], compare: [], trips: [] });
+    localStorage.setItem(KEY, needsClamping);
+    setup();
+    await waitFor(() => expect(saved()).toBe(first.id));
+
+    const fromOtherTab = JSON.stringify({ saved: [second.id], compare: [], trips: [] });
+    act(() => {
+      localStorage.setItem(KEY, fromOtherTab);
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: fromOtherTab }));
+    });
+    await waitFor(() => expect(saved()).toBe(second.id));
+    expect(saved()).not.toContain(first.id);
   });
 
   it('does not treat state adopted from another tab as an edit of its own', async () => {

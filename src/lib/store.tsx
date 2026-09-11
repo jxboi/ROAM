@@ -9,6 +9,16 @@ import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from 
 /** Notes and budgets change on every keystroke; batch the writes instead. */
 const SAVE_DELAY = 400;
 
+/** Whether a string is valid JSON at all — not whether it is a valid State. */
+function isParseableJson(raw: string): boolean {
+  try {
+    JSON.parse(raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   // One read at mount: useRef evaluates its argument on every render, and this
   // provider re-renders on every keystroke in the planner.
@@ -16,17 +26,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const raw = readStorage(KEY);
     const loaded = parseState(raw);
     const canonical = JSON.stringify(loaded);
-    // Three cases for what "last written" should mean:
-    //  - no key at all: nothing to repair, and a fresh tab that has changed
-    //    nothing should not look dirty to the cross-tab merge below, so this
-    //    counts as already matching the canonical empty document;
-    //  - the key already holds exactly the canonical form: also nothing to do;
-    //  - anything else (corrupted JSON, a shape an older version wrote, a
-    //    hand-edited file) parsed into `loaded` but doesn't match its own
-    //    canonical form. Leaving lastWritten mismatched here means the first
-    //    debounced flush sees a change and writes the repaired state out,
-    //    self-healing storage instead of leaving the bad value in place.
-    const lastWritten = raw === null ? canonical : raw === canonical ? raw : null;
+    // Only genuinely unparseable JSON (a truncated write, a hand-typed edit
+    // gone wrong) forces an immediate repair: leaving broken bytes in place
+    // serves no one. Anything that parsed — even if normalizeState had to
+    // clamp a value or drop a trip whose ride no longer exists — is trusted
+    // as loaded and left on disk untouched until a real edit happens, rather
+    // than silently overwriting data a future fix might still make sense of,
+    // and rather than making a freshly loaded tab look "dirty" to the
+    // cross-tab merge below purely because its own snapshot needed massaging.
+    const corrupted = raw !== null && !isParseableJson(raw);
+    const lastWritten = corrupted ? null : canonical;
     return { state: loaded, lastWritten };
   });
   const [state, setState] = useState<State>(initial.state);
