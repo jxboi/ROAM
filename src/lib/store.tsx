@@ -121,8 +121,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     // Something here is unwritten. Reconcile rather than replace, so a heart
     // tapped in another tab cannot revert the notes being typed in this one.
-    // lastWritten stays put, so the result is written out on the next flush.
-    setState(current => mergeConcurrent(current, incoming));
+    // lastWritten (the last state this tab itself confirmed to disk) is the
+    // common ancestor the merge needs to tell an id this tab just removed
+    // from one it simply never had. It stays put here regardless, so the
+    // result is written out — and captured as the new ancestor — on the
+    // next flush.
+    const base = parseState(lastWritten.current);
+    setState(current => mergeConcurrent(current, incoming, base));
   }), [hasUnwrittenChanges]);
 
   const toggleSaved = useCallback((id: string) => {

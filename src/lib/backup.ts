@@ -115,17 +115,37 @@ export function describeStored({ trips, saved, compare }: { trips: number; saved
 }
 
 /**
- * Reconciles this tab's state with a write from another one, while something
- * here is still being edited.
- *
- * There is one document per origin and no per-item history, so the two tabs
- * cannot both be right about a trip that only one of them has. This keeps
- * both, which means a trip deleted in the other tab reappears — the rarer and
- * more visible mistake — rather than discarding notes being typed here, which
- * would be silent. The comparison stays this tab's: emptying the tray someone
- * is looking at is worse than missing a selection made elsewhere.
+ * Three-way merge for a plain id list, using the last state both sides are
+ * known to have shared as the common ancestor: keeps whatever either side
+ * still agrees with that ancestor on, plus anything either side added since.
+ * An id missing from `current` that `base` had is a removal `current` made
+ * — dropped from the result even if `incoming` (a copy that predates the
+ * removal) still has it, rather than a plain union silently reinstating it.
  */
-export function mergeConcurrent(current: State, incoming: State): State {
+function mergeIds(current: string[], incoming: string[], base: string[]): string[] {
+  const baseIds = new Set(base);
+  const incomingIds = new Set(incoming);
+  const merged = new Set<string>();
+  for (const id of current) if (incomingIds.has(id) || !baseIds.has(id)) merged.add(id);
+  for (const id of incoming) if (!baseIds.has(id)) merged.add(id);
+  return [...merged];
+}
+
+/**
+ * Reconciles this tab's state with a write from another one, while something
+ * here is still being edited. `base` is the last state this tab itself wrote
+ * to storage — the point the two tabs are known to have last agreed, and the
+ * only way to tell an id one side removed from an id the other side never
+ * had, since a plain snapshot carries no per-item history.
+ *
+ * There is one document per origin, so the two tabs cannot both be right
+ * about a trip that only one of them has. Trips keep both, which means one
+ * deleted in the other tab reappears — the rarer and more visible mistake —
+ * rather than discarding notes being typed here, which would be silent. The
+ * comparison stays this tab's: emptying the tray someone is looking at is
+ * worse than missing a selection made elsewhere.
+ */
+export function mergeConcurrent(current: State, incoming: State, base: State): State {
   const byId = new Map(incoming.trips.map(trip => [trip.id, trip]));
   for (const trip of current.trips) {
     const other = byId.get(trip.id);
@@ -134,7 +154,7 @@ export function mergeConcurrent(current: State, incoming: State): State {
     }
   }
   return {
-    saved: [...new Set([...current.saved, ...incoming.saved])],
+    saved: mergeIds(current.saved, incoming.saved, base.saved),
     compare: current.compare,
     trips: [...byId.values()].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
   };

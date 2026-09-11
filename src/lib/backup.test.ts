@@ -107,28 +107,44 @@ describe('reconciling with another tab mid-edit', () => {
   const newer = { ...older, name: 'Newer', updatedAt: '2027-06-01T00:00:00.000Z' };
 
   it('keeps the copy edited most recently, whichever side it is on', () => {
-    expect(mergeConcurrent(state({ trips: [newer] }), state({ trips: [older] })).trips[0].name).toBe('Newer');
-    expect(mergeConcurrent(state({ trips: [older] }), state({ trips: [newer] })).trips[0].name).toBe('Newer');
+    expect(mergeConcurrent(state({ trips: [newer] }), state({ trips: [older] }), state()).trips[0].name).toBe('Newer');
+    expect(mergeConcurrent(state({ trips: [older] }), state({ trips: [newer] }), state()).trips[0].name).toBe('Newer');
   });
 
   it('keeps a trip only one side knows about, rather than losing unwritten work', () => {
     const mine = createTrip(ride);
     const theirs = createTrip(ride);
-    const merged = mergeConcurrent(state({ trips: [mine] }), state({ trips: [theirs] }));
+    const merged = mergeConcurrent(state({ trips: [mine] }), state({ trips: [theirs] }), state());
     expect(merged.trips.map(trip => trip.id).sort()).toEqual([mine.id, theirs.id].sort());
   });
 
-  it('unions saved rides and keeps the comparison this tab is showing', () => {
+  it('unions saved rides new to both sides, and keeps the comparison this tab is showing', () => {
     const merged = mergeConcurrent(
       state({ saved: [rides[0].id], compare: [rides[0].id] }),
       state({ saved: [rides[1].id], compare: [rides[2].id] }),
+      state(),
     );
     expect(merged.saved).toEqual([rides[0].id, rides[1].id]);
     expect(merged.compare).toEqual([rides[0].id]);
   });
 
+  it('does not let a stale copy from the other tab resurrect a ride this tab just unsaved', () => {
+    // Both tabs last agreed rides[0] was saved; this tab has since unsaved it
+    // (unwritten, alongside some unrelated edit), and the other tab's write
+    // predates that removal and still shows it saved.
+    const base = state({ saved: [rides[0].id] });
+    const merged = mergeConcurrent(state({ saved: [] }), state({ saved: [rides[0].id] }), base);
+    expect(merged.saved).toEqual([]);
+  });
+
+  it('still keeps a ride the other tab saved fresh, even while this tab is dirty elsewhere', () => {
+    const base = state({ saved: [] });
+    const merged = mergeConcurrent(state({ saved: [] }), state({ saved: [rides[1].id] }), base);
+    expect(merged.saved).toEqual([rides[1].id]);
+  });
+
   it('orders the result with the most recently edited first', () => {
-    const merged = mergeConcurrent(state({ trips: [older] }), state({ trips: [createTrip(ride)] }));
+    const merged = mergeConcurrent(state({ trips: [older] }), state({ trips: [createTrip(ride)] }), state());
     expect(new Date(merged.trips[0].updatedAt).getTime())
       .toBeGreaterThanOrEqual(new Date(merged.trips[1].updatedAt).getTime());
   });
