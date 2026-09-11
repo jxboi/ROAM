@@ -1,7 +1,8 @@
 // Every localStorage access is guarded: the property getter itself throws in
 // some privacy modes and sandboxed frames, reads can return corrupt data, and
 // writes fail once the origin quota is full.
-function store(): Storage | null {
+/** Actually writes and removes a throwaway key — not a pure check, a real localStorage access. */
+function probeStorage(): Storage | null {
   try {
     const local = globalThis.localStorage;
     if (!local) return null;
@@ -36,7 +37,7 @@ export function writeStorage(key: string, value: string): boolean {
 }
 
 export function isStorageAvailable(): boolean {
-  return store() !== null;
+  return probeStorage() !== null;
 }
 
 /** Fires when another tab writes `key`, so open tabs don't overwrite each other. */
