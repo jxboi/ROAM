@@ -2,29 +2,32 @@ import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } fro
 import { StoreContext, type State } from './store-context';
 import { rideById, type Ride } from '../data/rides';
 import { createTrip, type Trip } from './planning';
-import { EMPTY, KEY, parseState } from './persistence';
+import { EMPTY, KEY, normalizeState, parseState } from './persistence';
 import { mergeConcurrent, mergeState, type RestoreSummary } from './backup';
 import { isStorageAvailable, readStorage, subscribeStorage, writeStorage } from './storage';
 
 /** Notes and budgets change on every keystroke; batch the writes instead. */
 const SAVE_DELAY = 400;
 
-/** Whether a string is valid JSON at all — not whether it is a valid State. */
-function isParseableJson(raw: string): boolean {
-  try {
-    JSON.parse(raw);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   // One read at mount: useRef evaluates its argument on every render, and this
   // provider re-renders on every keystroke in the planner.
   const [initial] = useState(() => {
     const raw = readStorage(KEY);
-    const loaded = parseState(raw);
+    // Parsed once, by hand, rather than through parseState: this is the one
+    // place that needs to tell "genuinely unparseable" apart from "parsed
+    // fine but needed normalizing", and parseState collapses that distinction
+    // (both become EMPTY) rather than duplicating the parse to recover it.
+    let parsed: unknown = null;
+    let corrupted = false;
+    if (raw !== null) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        corrupted = true;
+      }
+    }
+    const loaded = corrupted ? EMPTY : normalizeState(parsed);
     const canonical = JSON.stringify(loaded);
     // Only genuinely unparseable JSON (a truncated write, a hand-typed edit
     // gone wrong) forces an immediate repair: leaving broken bytes in place
@@ -34,7 +37,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // than silently overwriting data a future fix might still make sense of,
     // and rather than making a freshly loaded tab look "dirty" to the
     // cross-tab merge below purely because its own snapshot needed massaging.
-    const corrupted = raw !== null && !isParseableJson(raw);
     const lastWritten = corrupted ? null : canonical;
     return { state: loaded, lastWritten };
   });
