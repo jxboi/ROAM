@@ -40,10 +40,12 @@ the fallback and the security headers.
 
 Each host config sets the same headers:
 
-- A content security policy allowing no inline or third-party scripts, no
-  framing and no cross-origin connections. The app loads nothing from another
-  origin, so this can stay strict. `style-src` allows `unsafe-inline` because
-  markup style attributes need it; scripts do not.
+- A content security policy allowing no inline or third-party scripts or
+  styles, no framing and no cross-origin connections. The app loads nothing
+  from another origin, so this can stay strict throughout: React sets inline
+  `style` props through the CSSOM (`element.style.property = value`), which
+  CSP's `style-src` does not govern, so nothing in the app needs
+  `unsafe-inline` for either scripts or styles.
 - `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
   `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and HSTS where TLS is
   terminated by the host.
