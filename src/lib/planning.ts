@@ -28,6 +28,8 @@ export const CHECKLIST = [
   {id:'conditions',title:'Check road conditions & weather',text:'Review closures and the forecast close to departure.'},
   {id:'contacts',title:'Share your plan with someone',text:'Let someone know your route and when to expect an update.'},
 ];
+/** The single source of truth for "X of N ready" everywhere it appears. */
+export const CHECKLIST_LENGTH = CHECKLIST.length;
 export function createTrip(ride: Ride): Trip {
   const now = new Date().toISOString();
   return {id:uid(),rideId:ride.id,name:`My ${ride.name.replace(/^The /,'')} ride`,startDate:'',riders:1,ownBike:false,costs:{...ride.costs},days:ride.itinerary.map(day=>({id:uid(),title:day.title,description:day.description,km:day.km,stay:day.stay,notes:'',rest:false})),checklist:[],notes:'',createdAt:now,updatedAt:now};
