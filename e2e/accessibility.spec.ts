@@ -91,6 +91,26 @@ test.describe('accessibility', () => {
     await expect(page.locator('#route-announcer')).toHaveText('My trips, page loaded');
   });
 
+  test('does not re-announce the page on a title change that is not a navigation', async ({ page }) => {
+    await planRide(page, 'dolomites');
+    await expect(page.locator('#route-announcer')).toHaveText('My Dolomites ride, page loaded');
+
+    await page.getByRole('button', { name: 'Rename trip' }).click();
+    await page.getByLabel('Trip name').fill('A week of mountain mornings');
+    await page.getByRole('button', { name: /Save name/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'A week of mountain mornings' })).toBeVisible();
+
+    // No navigation happened, so the live region must not repeat itself with
+    // the new name — a screen reader should not hear "page loaded" a second
+    // time for a page nobody just arrived at.
+    await page.waitForTimeout(300);
+    await expect(page.locator('#route-announcer')).toHaveText('My Dolomites ride, page loaded');
+
+    // A genuine navigation afterwards still announces normally.
+    await shown(page.getByRole('link', { name: /My trips/ })).click();
+    await expect(page.locator('#route-announcer')).toHaveText('My trips, page loaded');
+  });
+
   test.describe('in forced colours', () => {
     test.use({ forcedColors: 'active' });
     test.skip(({ browserName }) => browserName !== 'chromium', 'forced colours emulation');
