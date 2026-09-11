@@ -58,13 +58,20 @@ function maskableSvg(mark) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 -13 90 90"><rect x="-13" y="-13" width="90" height="90" fill="#183b32"/>${inner}</svg>`;
 }
 
-/** Writes narrower copies of a source image alongside it, as name-<width>.webp. */
+/**
+ * Writes narrower copies of a source image alongside it, as name-<width>.webp.
+ * src/lib/images.ts hardcodes the same widths into every srcset it emits, so
+ * a width this source is too narrow to produce must fail the build loudly —
+ * silently skipping it would leave images.ts advertising a variant file that
+ * was never written, a 404 nobody would notice until a browser hit it.
+ */
 async function variants(name, widths) {
   const input = path.join(images, `${name}.webp`);
   const { width: original } = await sharp(input).metadata();
+  if (!original) throw new Error(`Could not read the width of ${input}`);
   const files = [];
   for (const width of widths) {
-    if (!original || width >= original) continue;
+    if (width >= original) throw new Error(`${name}.webp is ${original}px wide, too narrow for the requested ${width}px variant. Update RESPONSIVE_WIDTHS here and the matching constant in src/lib/images.ts.`);
     const destination = path.join(images, `${name}-${width}.webp`);
     await sharp(input).resize({ width, withoutEnlargement: true }).webp({ quality: 78, effort: 5 }).toFile(destination);
     files.push(destination);
@@ -72,23 +79,32 @@ async function variants(name, widths) {
   return files;
 }
 
-const written = [];
 await mkdir(social, { recursive: true });
 await mkdir(icons, { recursive: true });
 
-written.push(await card('hero-panorama', path.join(root, 'public', 'social-card.jpg')));
-for (const name of await rideImages()) {
-  written.push(await card(name, path.join(social, `${name}.jpg`)));
-  written.push(...await variants(name, RESPONSIVE_WIDTHS.ride));
-}
-for (const name of ['hero', 'hero-panorama']) written.push(...await variants(name, RESPONSIVE_WIDTHS[name]));
+// Each destination's card + variants, and each icon size, reads its own
+// source and writes its own file, so nothing here shares state — running
+// them concurrently costs nothing and turns a sum of many sharp calls into
+// roughly the slowest one.
+const [panoramaCard, rideAssets, edgeVariants] = await Promise.all([
+  card('hero-panorama', path.join(root, 'public', 'social-card.jpg')),
+  Promise.all((await rideImages()).map(async name => [
+    await card(name, path.join(social, `${name}.jpg`)),
+    ...await variants(name, RESPONSIVE_WIDTHS.ride),
+  ])),
+  Promise.all(['hero', 'hero-panorama'].map(name => variants(name, RESPONSIVE_WIDTHS[name]))),
+]);
 
 // librsvg rejects trailing whitespace after the closing tag.
 const mark = (await readFile(path.join(root, 'public', 'favicon.svg'), 'utf8')).trim();
-written.push(await icon(mark, 180, path.join(icons, 'apple-touch-icon.png'), '#183b32'));
-written.push(await icon(mark, 192, path.join(icons, 'icon-192.png')));
-written.push(await icon(mark, 512, path.join(icons, 'icon-512.png')));
-written.push(await icon(maskableSvg(mark), 512, path.join(icons, 'icon-maskable-512.png')));
+const iconFiles = await Promise.all([
+  icon(mark, 180, path.join(icons, 'apple-touch-icon.png'), '#183b32'),
+  icon(mark, 192, path.join(icons, 'icon-192.png')),
+  icon(mark, 512, path.join(icons, 'icon-512.png')),
+  icon(maskableSvg(mark), 512, path.join(icons, 'icon-maskable-512.png')),
+]);
+
+const written = [panoramaCard, ...rideAssets.flat(), ...edgeVariants.flat(), ...iconFiles];
 
 console.log(`Generated ${written.length} assets:`);
 for (const file of written) console.log(`  ${path.relative(root, file)}`);
