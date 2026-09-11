@@ -162,6 +162,25 @@ describe('store', () => {
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 
+  it('self-heals a corrupted storage entry, overwriting it on the first flush', async () => {
+    localStorage.setItem(KEY, '{not valid json');
+    setup();
+    // The corrupted string must not survive: the first debounced flush writes
+    // the repaired (empty) state over it, even though nothing was edited.
+    await waitFor(() => expect(localStorage.getItem(KEY)).toBe(JSON.stringify(stored())), { timeout: 2000 });
+    expect(stored()).toEqual({ saved: [], compare: [], trips: [] });
+  });
+
+  it('leaves a browser that already matches its own canonical form untouched', async () => {
+    const clean = JSON.stringify({ saved: [], compare: [], trips: [] });
+    localStorage.setItem(KEY, clean);
+    setup();
+    // No edit was made, so the debounce must not fire a needless rewrite —
+    // if it did, this would still pass, but the point is nothing should race.
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(localStorage.getItem(KEY)).toBe(clean);
+  });
+
   it('does not treat state adopted from another tab as an edit of its own', async () => {
     setup();
     const withRide = JSON.stringify({ saved: [first.id], compare: [], trips: [] });

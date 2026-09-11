@@ -27,14 +27,16 @@ export class ErrorBoundary extends Component<Props, ErrorState> {
 
   /**
    * React caches a lazy import's rejection for the life of the page, so
-   * re-rendering a route whose chunk failed just re-throws the same error.
-   * Only a fresh load can recover that one.
+   * re-rendering a route whose chunk failed just re-throws the same error —
+   * only a fresh load recovers that one, and only while a reload could
+   * plausibly help (online, and not already tried once for this failure).
+   * Anything else can simply be re-rendered.
    */
-  /** A failed chunk can only be recovered by a fresh load, and only once. */
   private canRetry(): boolean {
     return !isChunkLoadError(this.state.error) || canReloadForChunk(this.state.error);
   }
 
+  /** Reloads for a recoverable chunk failure; otherwise re-renders in place. */
   private retry() {
     if (canReloadForChunk(this.state.error) && markChunkReload()) {
       window.location.reload();

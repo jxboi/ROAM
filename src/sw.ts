@@ -37,18 +37,21 @@ function withoutRedirect(response: Response): Response {
 }
 
 async function precache(): Promise<void> {
-  const cache = await caches.open(SHELL_CACHE);
-  // Each file is streamed straight into the cache. A failure rejects the
-  // install, so the worker never activates; whatever landed first sits unused
-  // under this build's own cache name and is overwritten by the next attempt.
-  await Promise.all([...SHELL_URLS].map(async url => {
+  // Every file is downloaded before anything is written to the cache. The
+  // shell is small (a few hundred KB) and install happens once per deploy, so
+  // holding the responses briefly costs nothing — and it means a failure here
+  // (one 404 from a CDN propagation gap) leaves no partial cache behind under
+  // this build's own name for activate() to find and reuse next time.
+  const downloaded = await Promise.all([...SHELL_URLS].map(async url => {
     // Bypass the HTTP cache while installing. index.html is served with
     // must-revalidate, and precaching a copy of the previous build's document
     // would point every navigation at assets this build no longer has.
     const response = await fetch(new Request(url, { cache: 'reload' }));
     if (!response.ok) throw new Error(`ROAM: cannot precache ${url} (${response.status})`);
-    await cache.put(url, withoutRedirect(response));
+    return [url, withoutRedirect(response)] as const;
   }));
+  const cache = await caches.open(SHELL_CACHE);
+  await Promise.all(downloaded.map(([url, response]) => cache.put(url, response)));
 }
 
 self.addEventListener('install', event => {

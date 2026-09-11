@@ -13,12 +13,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // One read at mount: useRef evaluates its argument on every render, and this
   // provider re-renders on every keystroke in the planner.
   const [initial] = useState(() => {
-    const loaded = parseState(readStorage(KEY));
-    // Record the loaded state, not the raw string it came from: an empty
-    // browser and an empty document mean the same thing, and treating them as
-    // different would make a tab that has changed nothing look unsaved — and
-    // would create a storage key for a visitor who never saved anything.
-    return { state: loaded, json: JSON.stringify(loaded) };
+    const raw = readStorage(KEY);
+    const loaded = parseState(raw);
+    const canonical = JSON.stringify(loaded);
+    // Three cases for what "last written" should mean:
+    //  - no key at all: nothing to repair, and a fresh tab that has changed
+    //    nothing should not look dirty to the cross-tab merge below, so this
+    //    counts as already matching the canonical empty document;
+    //  - the key already holds exactly the canonical form: also nothing to do;
+    //  - anything else (corrupted JSON, a shape an older version wrote, a
+    //    hand-edited file) parsed into `loaded` but doesn't match its own
+    //    canonical form. Leaving lastWritten mismatched here means the first
+    //    debounced flush sees a change and writes the repaired state out,
+    //    self-healing storage instead of leaving the bad value in place.
+    const lastWritten = raw === null ? canonical : raw === canonical ? raw : null;
+    return { state: loaded, lastWritten };
   });
   const [state, setState] = useState<State>(initial.state);
   const [toast, setToast] = useState('');
@@ -26,7 +35,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<State | null>(null);
-  const lastWritten = useRef<string | null>(initial.json);
+  const lastWritten = useRef<string | null>(initial.lastWritten);
   // Committed state, readable from event handlers without re-creating callbacks.
   const latest = useRef(state);
   useEffect(() => { latest.current = state; }, [state]);
