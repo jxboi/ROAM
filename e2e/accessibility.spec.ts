@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { browseAllRides, planRide, shown } from './helpers';
+import { browseAllRides, openProfile, planRide, shown } from './helpers';
 
 async function expectNoViolations(page: Page) {
   // Contrast is measured from computed styles, so a dialog caught mid fade-in
@@ -49,9 +49,14 @@ test.describe('accessibility', () => {
     const picks = page.getByRole('button', { name: 'Compare', exact: true });
     await picks.nth(0).click();
     await picks.nth(1).click();
+    await page.getByRole('button', { name: /^Save /, exact: false }).first().click();
     await page.goto('/saved');
     await expectNoViolations(page);
     await page.goto('/compare');
+    await expectNoViolations(page);
+
+    await planRide(page, 'dolomites');
+    await page.goto('/trips');
     await expectNoViolations(page);
   });
 
@@ -68,8 +73,7 @@ test.describe('accessibility', () => {
 
   test('the profile panel, including the backup controls', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Your travel space' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await openProfile(page);
     await expectNoViolations(page);
   });
 

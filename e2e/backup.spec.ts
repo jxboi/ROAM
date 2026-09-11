@@ -1,10 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { planRide, shown, toast } from './helpers';
-
-const openProfile = async (page: import('@playwright/test').Page) => {
-  await page.getByRole('button', { name: 'Your travel space' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-};
+import { openProfile, planRide, shown, toast } from './helpers';
 
 test.describe('backup and restore', () => {
   test('carries a trip to a browser that has never seen it', { tag: '@smoke' }, async ({ page, browser, baseURL }) => {
@@ -124,7 +119,7 @@ test.describe('a browser that refuses to store anything', () => {
     // Planning still works for as long as the tab is open, and the planner is
     // honest about the fact that nothing is being written down.
     await page.goto('/ride/dolomites');
-    await page.getByRole('button', { name: 'Plan this ride' }).filter({ visible: true }).first().click();
+    await shown(page.getByRole('button', { name: 'Plan this ride' })).click();
     await expect(page).toHaveURL(/\/trips\/[0-9a-f-]{36}$/);
     await expect(page.locator('.autosave')).toContainText('Not saved — export a copy');
     await page.getByLabel('Trip start date').fill('2027-07-10');
@@ -132,7 +127,7 @@ test.describe('a browser that refuses to store anything', () => {
 
     // And the way out is still open: the export is a file, not storage.
     const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export trip' }).filter({ visible: true }).first().click();
+    await shown(page.getByRole('button', { name: 'Export trip' })).click();
     await page.getByRole('button', { name: /Download trip plan/ }).click();
     expect((await download).suggestedFilename()).toBe('roam-dolomites-trip.md');
     await context.close();

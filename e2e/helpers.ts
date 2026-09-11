@@ -31,3 +31,9 @@ export async function planRide(page: Page, rideId: string) {
 }
 
 export const toast = (page: Page): Locator => page.locator('.toast');
+
+/** Opens the profile panel (backup, restore and data-removal controls live here). */
+export async function openProfile(page: Page) {
+  await page.getByRole('button', { name: 'Your travel space' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+}

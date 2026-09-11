@@ -50,7 +50,6 @@ test.describe('discovery', () => {
     expect(await page.locator('article.ride-card').count()).toBeGreaterThan(0);
 
     await page.getByLabel('More filters').click();
-    await page.getByRole('button', { name: 'Up to $200 / day' }).isVisible().catch(() => {});
     await page.getByLabel('Daily budget per rider').selectOption('200');
     await page.getByRole('button', { name: /^Show \d+ rides/ }).click();
     await expect(page.locator('.active-filters')).toContainText('Up to $200/day');
