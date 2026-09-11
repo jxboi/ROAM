@@ -79,7 +79,17 @@ function headersFor(pathname) {
 }
 
 function resolveFile(pathname) {
-  const decoded = decodeURIComponent(pathname);
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    // A malformed percent-encoding (e.g. a bare "%") throws rather than
+    // returning a string. It cannot name a real file either way, so treat it
+    // as a miss instead of letting it escape as an uncaught exception — Node's
+    // http server does not catch a synchronous throw from a request listener,
+    // and would otherwise take the whole process down on a single bad request.
+    return null;
+  }
   const candidate = path.join(dist, decoded);
   // Refuse anything that escapes dist, however it was encoded.
   if (candidate !== dist && !candidate.startsWith(dist + path.sep)) return null;
@@ -91,27 +101,37 @@ function resolveFile(pathname) {
 }
 
 const server = createServer((request, response) => {
-  const url = new URL(request.url ?? '/', `http://${request.headers.host ?? host}`);
-  const file = resolveFile(url.pathname);
-  const applied = headersFor(url.pathname);
+  // A request listener's synchronous throw is not caught by the http module —
+  // it would otherwise surface as an uncaught exception and take the whole
+  // server down for every other client over one bad request (an unusual
+  // request line reaching `new URL`, or a file removed between the
+  // existsSync/statSync calls below). Answer with a plain 400 instead.
+  try {
+    const url = new URL(request.url ?? '/', `http://${request.headers.host ?? host}`);
+    const file = resolveFile(url.pathname);
+    const applied = headersFor(url.pathname);
 
-  if (!file || !existsSync(file)) {
+    if (!file || !existsSync(file)) {
+      for (const [name, value] of applied) response.setHeader(name, value);
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Not found');
+      return;
+    }
+
     for (const [name, value] of applied) response.setHeader(name, value);
-    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    response.end('Not found');
-    return;
-  }
-
-  for (const [name, value] of applied) response.setHeader(name, value);
-  response.setHeader('Content-Type', TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream');
-  response.setHeader('Content-Length', statSync(file).size);
-  if (request.method === 'HEAD') {
+    response.setHeader('Content-Type', TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream');
+    response.setHeader('Content-Length', statSync(file).size);
+    if (request.method === 'HEAD') {
+      response.writeHead(200);
+      response.end();
+      return;
+    }
     response.writeHead(200);
-    response.end();
-    return;
+    createReadStream(file).pipe(response);
+  } catch {
+    if (!response.headersSent) response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    response.end('Bad request');
   }
-  response.writeHead(200);
-  createReadStream(file).pipe(response);
 });
 
 if (!existsSync(path.join(dist, 'index.html'))) {
