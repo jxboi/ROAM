@@ -22,7 +22,7 @@
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/manrope": "^5.2.8",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^1.43.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.1"
