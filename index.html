@@ -3,13 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#183b32" />
-    <meta name="description" content="Find your next great motorcycle ride. Discover extraordinary routes around the world, compare destinations, and make the trip your own with ROAM." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>ROAM — Find your next great ride</title>
+    <meta name="description" content="Find your next great motorcycle ride. Discover extraordinary routes around the world, compare destinations, and make the trip your own with ROAM." />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Defaults for crawlers and link unfurlers that never run the app; the
+         router replaces these per route once React mounts. -->
+    <meta property="og:site_name" content="ROAM" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ROAM — Find your next great ride" />
+    <meta property="og:description" content="Discover extraordinary motorcycle routes around the world, compare destinations, and make the trip your own." />
+    <meta property="og:image" content="/social-card.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A motorcyclist on a mountain road at golden hour" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ROAM — Find your next great ride" />
+    <meta name="twitter:description" content="Discover extraordinary motorcycle routes around the world, compare destinations, and make the trip your own." />
+    <meta name="twitter:image" content="/social-card.jpg" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- iOS still reads these rather than the manifest when adding to the home
+         screen. black-translucent pairs with viewport-fit=cover and the
+         safe-area insets the layout already uses. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ROAM" />
+
+    <!-- The hero is the largest contentful paint on the landing page. These
+         candidate sets must stay identical to the ones the hero renders with,
+         or the browser preloads one file and then fetches another. -->
+    <link
+      rel="preload"
+      as="image"
+      media="(min-width: 641px)"
+      imagesrcset="/images/hero-panorama-1200.webp 1200w, /images/hero-panorama-1440.webp 1440w, /images/hero-panorama-1800.webp 1800w, /images/hero-panorama.webp 2172w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      media="(max-width: 640px)"
+      imagesrcset="/images/hero-480.webp 480w, /images/hero-800.webp 800w, /images/hero-1200.webp 1200w, /images/hero.webp 1536w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div class="noscript-note">
+        <h1>ROAM needs JavaScript</h1>
+        <p>ROAM plans motorcycle trips in your browser, with no account and no server storing your plans. Please enable JavaScript to explore the routes.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

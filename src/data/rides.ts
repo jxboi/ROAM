@@ -7,7 +7,7 @@ export type Ride = {
   description: string; days: number; distance: number; difficulty: Difficulty; styles: RideStyle[];
   months: number[]; season: string; road: string; start: string; finish: string; bike: string;
   costs: Costs; highlights: string[]; practical: {title:string; text:string}[]; itinerary: Day[];
-  source: {name:string; url:string};
+  source: {name:string; url:string; checked:string};
 };
 export const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 export const STYLES: RideStyle[] = ['Mountain passes','Coastal roads','Off the beaten path','Weekend escapes'];
@@ -27,7 +27,7 @@ export const rides: Ride[] = [
       {title:'Passo Giau and the valleys',description:'Explore Passo Giau and the surrounding valleys. Choose a longer café stop over another rushed pass.',km:140,stay:'Cortina d’Ampezzo',highlight:'The sweeping bends of Passo Giau'},
       {title:'Cortina → Val di Fassa',description:'Follow a scenic return west through small mountain towns. Take a little extra time for the stops you missed.',km:150,stay:'Canazei',highlight:'A long lunch in an alpine village'},
       {title:'Val di Fassa → Bolzano',description:'Return through the mountains and into the valley, leaving time to refuel and return the bike.',km:120,stay:'Bolzano',highlight:'One last mountain espresso'}
-    ],source:{name:'South Tyrol · mountain passes',url:'https://www.suedtirol.info/en/en/information/mobility/mountain-passes-in-south-tyrol'}
+    ],source:{name:'South Tyrol · mountain passes',url:'https://www.suedtirol.info/en/en/information/mobility/mountain-passes-in-south-tyrol',checked:'2026-09'}
   },
   {
     id:'ha-giang',name:'Ha Giang Loop',country:'Vietnam',region:'Asia',image:'vietnam',tagline:'Take the long way into another world.',short:'Limestone peaks, village life and unforgettable roads.',
@@ -40,7 +40,7 @@ export const rides: Ride[] = [
       {title:'Yen Minh → Dong Van',description:'Continue through the geopark, allowing time for village stops and a relaxed arrival in Dong Van.',km:70,stay:'Dong Van',highlight:'Limestone peaks and an old town stroll'},
       {title:'Dong Van → Du Gia',description:'Ride the spectacular Ma Pi Leng area before continuing toward a quieter overnight stop.',km:100,stay:'Du Gia',highlight:'A dramatic view above the Nho Que valley'},
       {title:'Du Gia → Ha Giang',description:'Enjoy a slow morning, then take a locally verified return route to Ha Giang before dark.',km:80,stay:'Ha Giang',highlight:'A final stretch through green valleys'}
-    ],source:{name:'Vietnam Tourism · Ha Giang Loop',url:'https://www.vietnam.travel/things-to-do/ha-giang-loop'}
+    ],source:{name:'Vietnam Tourism · Ha Giang Loop',url:'https://www.vietnam.travel/things-to-do/ha-giang-loop',checked:'2026-09'}
   },
   {
     id:'atlas',name:'Atlas Mountains',country:'Morocco',region:'Africa',image:'morocco',tagline:'A little further from the everyday.',short:'Ancient roads, vivid culture and mountain views.',
@@ -55,7 +55,7 @@ export const rides: Ride[] = [
       {title:'Dadès → Ouarzazate',description:'Turn west for an easy day, stopping at places you passed on the way out.',km:160,stay:'Ouarzazate',highlight:'Small-town cafés and oasis landscapes'},
       {title:'Ouarzazate → Marrakech',description:'Cross back over the Atlas while the day is still cool. Make the most of the morning mountain light.',km:195,stay:'Marrakech',highlight:'One more crossing of the high country'},
       {title:'A gentle Marrakech day ride',description:'Choose a short locally recommended ride or trade the bike for a relaxed city day before return.',km:150,stay:'Marrakech',highlight:'A flexible day to make your own'}
-    ],source:{name:'Visit Morocco · nature and adventure',url:'https://www.visitmorocco.com/sites/default/files/atoms/files/Nature%20%26%20Adventure%20ENG.pdf'}
+    ],source:{name:'Visit Morocco · nature and adventure',url:'https://www.visitmorocco.com/sites/default/files/atoms/files/Nature%20%26%20Adventure%20ENG.pdf',checked:'2026-09'}
   },
   {
     id:'lofoten',name:'Lofoten Islands',country:'Norway',region:'Europe',image:'norway',tagline:'Follow the road. Lose track of time.',short:'Arctic light, fishing villages and roads beside the sea.',
@@ -68,7 +68,7 @@ export const rides: Ride[] = [
       {title:'Henningsvær → Reine',description:'Follow the island road south with beach and village stops along the way.',km:130,stay:'Reine',highlight:'Mountains above the sea'},
       {title:'Reine → Å and back',description:'Visit the southern end of the road and leave plenty of time for short walks and quiet viewpoints.',km:70,stay:'Reine',highlight:'The village at the end of the road'},
       {title:'Reine → Svolvær',description:'Make an unhurried return with a fresh detour if conditions allow.',km:140,stay:'Svolvær',highlight:'One more beach stop'}
-    ],source:{name:'Norwegian Scenic Routes · Lofoten',url:'https://www.nasjonaleturistveger.no/en/routes/lofoten'}
+    ],source:{name:'Norwegian Scenic Routes · Lofoten',url:'https://www.nasjonaleturistveger.no/en/routes/lofoten',checked:'2026-09'}
   },
   {
     id:'kyushu',name:'Kyushu Volcano Roads',country:'Japan',region:'Asia',image:'japan',tagline:'Green hills. Hot springs. Happy detours.',short:'Volcanic landscapes with an onsen at the end of the day.',
@@ -80,7 +80,7 @@ export const rides: Ride[] = [
       {title:'Kumamoto → Aso',description:'Leave the city behind and spend the afternoon exploring the caldera landscape on open roads.',km:100,stay:'Aso',highlight:'The grasslands around Kusasenri'},
       {title:'Aso → Kurokawa Onsen',description:'Make a scenic loop toward the Kuju area and settle into a hot-spring town for the evening.',km:120,stay:'Kurokawa Onsen',highlight:'A mountain road and an evening soak'},
       {title:'Kurokawa → Kumamoto',description:'Enjoy a leisurely return through the countryside, with a final lunch stop before bike return.',km:100,stay:'Kumamoto',highlight:'A last taste of the Kyushu countryside'}
-    ],source:{name:'Japan National Tourism Organization · road trips',url:'https://www.japan.travel/th/th/newsletter/japan-road-trip-driving/'}
+    ],source:{name:'Japan National Tourism Organization · road trips',url:'https://www.japan.travel/th/th/newsletter/japan-road-trip-driving/',checked:'2026-09'}
   },
   {
     id:'south-island',name:'South Island Escape',country:'New Zealand',region:'Oceania',image:'newzealand',tagline:'Big landscapes. Absolutely no hurry.',short:'Turquoise lakes and the long way to the Southern Alps.',
@@ -96,7 +96,7 @@ export const rides: Ride[] = [
       {title:'A Wānaka day ride',description:'Take a relaxed out-and-back toward the lake country or spend a day off the bike.',km:180,stay:'Wānaka',highlight:'A day with no unpacking'},
       {title:'Wānaka → Queenstown',description:'Choose a locally suitable route into Queenstown with time for viewpoints and lunch.',km:130,stay:'Queenstown',highlight:'A new lake around the next bend'},
       {title:'Queenstown and the lake road',description:'Enjoy a final scenic day ride before returning the motorcycle and celebrating the trip.',km:185,stay:'Queenstown',highlight:'A last lakeside ride'}
-    ],source:{name:'Tourism New Zealand · road trips',url:'https://www.newzealand.com/ca/feature/road-trips/'}
+    ],source:{name:'Tourism New Zealand · road trips',url:'https://www.newzealand.com/ca/feature/road-trips/',checked:'2026-09'}
   },
   {
     id:'blue-ridge',name:'Blue Ridge Parkway',country:'United States',region:'North America',image:'blueridge',tagline:'Let the mountains slow you down.',short:'Soft blue horizons and a thousand shades of autumn.',
@@ -108,7 +108,7 @@ export const rides: Ride[] = [
       {title:'Waynesboro → Peaks of Otter',description:'Ease into the parkway with long overlook stops and a relaxed arrival near the mountains.',km:140,stay:'Bedford area',highlight:'Layers of blue hills'},
       {title:'Peaks of Otter → Roanoke',description:'Enjoy a short riding day with time for a walk and a leisurely afternoon in town.',km:100,stay:'Roanoke',highlight:'A slow morning beneath the peaks'},
       {title:'Roanoke → Waynesboro',description:'Return on open scenic roads and revisit your favourite viewpoints in a different light.',km:180,stay:'Waynesboro',highlight:'The best views, one more time'}
-    ],source:{name:'National Park Service · motorcycle planning',url:'https://www.nps.gov/blri/planyourvisit/motorcycle-safety.htm'}
+    ],source:{name:'National Park Service · motorcycle planning',url:'https://www.nps.gov/blri/planyourvisit/motorcycle-safety.htm',checked:'2026-09'}
   },
   {
     id:'patagonia',name:'Carretera Austral',country:'Chile',region:'South America',image:'patagonia',tagline:'For the part of you that wants to go further.',short:'Glacial lakes, gravel roads and a wilder kind of freedom.',
@@ -125,7 +125,7 @@ export const rides: Ride[] = [
       {title:'Cochrane → Puerto Río Tranquilo',description:'Turn north with fresh views of the same extraordinary landscape.',km:115,stay:'Puerto Río Tranquilo',highlight:'The lake in a different light'},
       {title:'Puerto Río Tranquilo → Cerro Castillo',description:'Keep the ride relaxed and stop at the places you passed on the way south.',km:130,stay:'Villa Cerro Castillo',highlight:'A final night in the mountain country'},
       {title:'Cerro Castillo → Coyhaique',description:'Return with room for refuelling, bike handover and a final Patagonian meal.',km:190,stay:'Coyhaique',highlight:'A well-earned finish'}
-    ],source:{name:'Chile Travel · Carretera Austral',url:'https://chile.travel/en/destinations/carretera-austral/'}
+    ],source:{name:'Chile Travel · Carretera Austral',url:'https://chile.travel/en/destinations/carretera-austral/',checked:'2026-09'}
   }
 ];
 export const rideById = (id: string) => rides.find(ride => ride.id === id);

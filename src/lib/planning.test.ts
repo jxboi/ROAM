@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { rides, dailyCost } from '../data/rides';
-import { addDays, createTrip, defaultFilters, filterRides, planCalendar, planMarkdown, tripBudget } from './planning';
+import { addDays, createTrip, defaultFilters, downloadFile, filterRides, formatMonth, planCalendar, planMarkdown, tripBudget } from './planning';
 
 describe('ride discovery',()=>{
  it('combines destination, season, difficulty and budget rather than ignoring constraints',()=>{
@@ -47,6 +47,8 @@ describe('trip budget',()=>{
   expect(trip.id).not.toBe(other.id);expect(trip.days[0].id).not.toBe(other.days[0].id);
  });
 });
+/** What a calendar client does first: rejoin folded content lines. */
+const unfold=(ics:string)=>ics.replace(/\r\n /g,'');
 describe('calendar dates and exports',()=>{
  it('crosses month, year and leap-day boundaries without timezone drift',()=>{
   expect(addDays('2027-12-31',1)).toBe('2028-01-01');
@@ -57,7 +59,7 @@ describe('calendar dates and exports',()=>{
  });
  it('exports one all-day event per day with an exclusive end date',()=>{
   const trip=createTrip(rides[0]);trip.startDate='2027-12-30';trip.days=trip.days.slice(0,3);
-  const calendar=planCalendar(trip);
+  const calendar=unfold(planCalendar(trip));
   expect(calendar.match(/BEGIN:VEVENT/g)).toHaveLength(3);
   expect(calendar).toContain('DTSTART;VALUE=DATE:20280101\r\nDTEND;VALUE=DATE:20280102');
   expect(calendar).toContain('CALSCALE:GREGORIAN');
@@ -65,16 +67,118 @@ describe('calendar dates and exports',()=>{
  });
  it('escapes notes in calendar files and includes the complete plan in text exports',()=>{
   const trip=createTrip(rides[0]);trip.startDate='2027-06-15';trip.days[0].notes='Espresso, then fuel; bring cash\nAsk about parking';trip.checklist=['gear'];trip.notes='Flight arrives Monday.';
-  const calendar=planCalendar(trip),markdown=planMarkdown(trip,rides[0]);
+  const calendar=unfold(planCalendar(trip)),markdown=planMarkdown(trip,rides[0]);
   expect(calendar).toContain('Espresso\\, then fuel\\; bring cash\\nAsk about parking');
   expect(markdown).toContain('Flight arrives Monday.');expect(markdown).toContain('- [x] Check riding gear & repair kit');
   expect(markdown).toContain('10% buffer: $125');expect(markdown).toContain(rides[0].source.url);
+  // A shared plan can find its way back to the ride it came from.
+  expect(markdown).toContain(`/ride/${rides[0].id}`);
  });
 });
 describe('editorial data integrity',()=>{
+ it('keeps the route identifiers it has already handed out',()=>{
+  // A stored trip points at its route by id, and a saved ride is just an id.
+  // Renaming or removing one silently deletes those plans on next load, so the
+  // set is pinned here and a change to it has to be a deliberate one.
+  expect(rides.map(r=>r.id)).toEqual([
+   'dolomites','ha-giang','atlas','lofoten','kyushu','south-island','blue-ridge','patagonia',
+  ]);
+ });
  it('has internally consistent day counts, distances and valid season values',()=>{
   expect(new Set(rides.map(r=>r.id)).size).toBe(rides.length);
   expect(new Set(rides.map(r=>r.region)).size).toBe(6);
-  for(const ride of rides){expect(ride.days,ride.id).toBe(ride.itinerary.length);expect(ride.distance,ride.id).toBe(ride.itinerary.reduce((sum,d)=>sum+d.km,0));expect(ride.months.every(m=>Number.isInteger(m)&&m>=1&&m<=12)).toBe(true);expect(ride.source.url).toMatch(/^https:\/\//);}
+  for(const ride of rides){expect(ride.days,ride.id).toBe(ride.itinerary.length);expect(ride.distance,ride.id).toBe(ride.itinerary.reduce((sum,d)=>sum+d.km,0));expect(ride.months.every(m=>Number.isInteger(m)&&m>=1&&m<=12)).toBe(true);expect(ride.source.url).toMatch(/^https:\/\//);expect(ride.source.checked,ride.id).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);expect(formatMonth(ride.source.checked),ride.id).not.toBe('');}
+ });
+});
+
+describe('reference dates',()=>{
+ it('renders the month a destination reference was last checked',()=>{
+  expect(formatMonth('2026-09')).toBe('September 2026');
+  expect(formatMonth('2027-01')).toBe('January 2027');
+ });
+ it('says nothing rather than something wrong when the stamp is unusable',()=>{
+  expect(formatMonth('')).toBe('');
+  expect(formatMonth('September 2026')).toBe('');
+  expect(formatMonth('2026-13')).toBe('');
+ });
+});
+
+describe('handing a file to the browser',()=>{
+ it('cleans up the link and its object URL only after the download has started',async()=>{
+  const created=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:test');
+  const revoked=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+  const clicked=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+  vi.useFakeTimers();
+  try{
+   downloadFile('plan.md','# Plan','text/markdown');
+   expect(created).toHaveBeenCalledOnce();
+   expect(clicked).toHaveBeenCalledOnce();
+   const link=document.querySelector<HTMLAnchorElement>('a[download="plan.md"]');
+   expect(link,'the anchor must outlive the click').not.toBeNull();
+   expect(revoked).not.toHaveBeenCalled();
+   vi.advanceTimersByTime(1500);
+   expect(document.querySelector('a[download="plan.md"]')).toBeNull();
+   expect(revoked).toHaveBeenCalledWith('blob:test');
+  }finally{
+   vi.useRealTimers();
+   vi.restoreAllMocks();
+  }
+ });
+});
+
+describe('calendar file format',()=>{
+ const build=()=>{
+  const trip=createTrip(rides[0]);
+  trip.startDate='2027-06-15';
+  trip.name='A week of mountain mornings';
+  trip.days[0].notes='A very long note '.repeat(20);
+  return planCalendar(trip);
+ };
+ it('never emits a content line longer than the 75 octets the format allows',()=>{
+  const encoder=new TextEncoder();
+  for(const line of build().split('\r\n'))expect(encoder.encode(line).length,line.slice(0,40)).toBeLessThanOrEqual(75);
+ });
+ it('continues a folded line behind a single space, so it rejoins exactly',()=>{
+  const calendar=build();
+  expect(calendar).toMatch(/\r\n /);
+  const rejoined=calendar.replace(/\r\n /g,'');
+  for(const line of rejoined.split('\r\n'))expect(line).toMatch(/^[A-Z-]+[;:]/);
+  expect(rejoined).toContain('A very long note A very long note');
+ });
+ it('escapes every line break, including the carriage returns a restored file can carry',()=>{
+  const trip=createTrip(rides[0]);
+  trip.startDate='2027-06-15';
+  trip.days[0].notes='First line\r\nSecond line\rThird line\nFourth line';
+  const calendar=planCalendar(trip);
+  // No raw control characters survive into the file.
+  expect(calendar.replace(/\r\n/g,'')).not.toMatch(/[\r\n]/);
+  expect(unfold(calendar)).toContain('First line\\nSecond line\\nThird line\\nFourth line');
+ });
+ it('does not split a multi-byte character across the fold',()=>{
+  const trip=createTrip(rides[0]);
+  trip.startDate='2027-06-15';
+  trip.days[0].notes='köszönöm szépen a türelmet '.repeat(6);
+  const calendar=planCalendar(trip);
+  expect(calendar).not.toContain('\uFFFD');
+  expect(calendar.replace(/\r\n /g,'')).toContain('köszönöm szépen a türelmet');
+ });
+ it('moves the sequence on when the trip is edited, so a re-import updates',()=>{
+  const trip=createTrip(rides[0]);
+  trip.startDate='2027-06-15';
+  trip.updatedAt='2027-06-01T00:00:00.000Z';
+  const first=unfold(planCalendar(trip));
+  const later={...trip,updatedAt:'2027-06-02T00:00:00.000Z'};
+  const second=unfold(planCalendar(later));
+  const sequence=(ics:string)=>Number(ics.match(/SEQUENCE:(\d+)/)![1]);
+  expect(sequence(second)).toBeGreaterThan(sequence(first));
+  expect(first).toContain('LAST-MODIFIED:20270601T000000Z');
+  // The identity stays put, so a calendar updates the event rather than
+  // adding a second copy of the same day.
+  const uid=(ics:string)=>ics.match(/UID:(.+)/)![1];
+  expect(uid(second)).toBe(uid(first));
+ });
+ it('names the calendar after the trip, so an import is recognisable',()=>{
+  expect(build()).toContain('X-WR-CALNAME:A week of mountain mornings');
+  expect(build()).toContain('NAME:A week of mountain mornings');
  });
 });
